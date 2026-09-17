@@ -49,6 +49,7 @@
       font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
     }
     .login-btn-primary { background: #1c1c3a; color: white; }
+    .login-btn-secondary { background: #f0f0f0; color: #444; }
 
     /* ══════════════════════════════════
        메인 페이지
@@ -1112,7 +1113,8 @@
     <input id="login-email" type="email" placeholder="이메일" autocomplete="username">
     <input id="login-password" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="current-password">
     <div class="login-msg" id="login-msg"></div>
-    <button class="login-btn login-btn-primary" onclick="doSignIn()">로그인</button>
+    <button class="login-btn login-btn-primary"   onclick="doSignIn()">로그인</button>
+    <button class="login-btn login-btn-secondary" onclick="doSignUp()">회원가입</button>
   </div>
 </div>
 
@@ -1425,6 +1427,20 @@ async function doSignIn() {
   msg.textContent = '';
   await loadAllData();
   openPick();
+}
+
+async function doSignUp() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const msg = document.getElementById('login-msg');
+  if (password.length < 6) {
+    msg.style.color = '#e74c3c'; msg.textContent = '비밀번호는 6자 이상이어야 해요.'; return;
+  }
+  msg.style.color = '#888'; msg.textContent = '처리 중...';
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) { msg.style.color = '#e74c3c'; msg.textContent = error.message; return; }
+  msg.style.color = '#27ae60';
+  msg.textContent = '가입 완료! 이메일함에서 인증 링크를 눌러주세요.';
 }
 
 async function doSignOut() {
