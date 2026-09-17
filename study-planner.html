@@ -1554,7 +1554,7 @@ function stopStudy() {
     markStudiedSlots(studyStartTime, endTime, studyColor);
     studySessions.push({ start: studyStartTime.toISOString(), end: endTime.toISOString(), color: studyColor });
     studyStartTime = null;
-    savePlannerState();
+    savePlannerStateNow();
   }
   studySec = 0;
   updateTotalDisplay();
@@ -1600,7 +1600,7 @@ function markStudiedSlots(startTime, endTime, color) {
   }
 }
 
-const savePlannerState = debounce(async () => {
+async function savePlannerStateNow() {
   if (!currentUser) return;
   await sb.from('planner_state').upsert({
     user_id: currentUser.id,
@@ -1612,7 +1612,8 @@ const savePlannerState = debounce(async () => {
     total_sec: totalSec,
     updated_at: new Date().toISOString()
   });
-}, 800);
+}
+const savePlannerState = debounce(savePlannerStateNow, 800);
 
 /* ── 플래너: 날짜 ── */
 const today = new Date();
@@ -1626,7 +1627,7 @@ let tasks = [], seq = 0;
 function addRow() {
   tasks.push({ id: ++seq, subject:'', plan:'', page:'', timeRange:'', color: TASK_COLORS[tasks.length % TASK_COLORS.length], done:false });
   renderTasks();
-  savePlannerState();
+  savePlannerStateNow();
   setTimeout(() => {
     const rows = document.querySelectorAll('.task-row');
     const last = rows[rows.length - 1];
@@ -1636,7 +1637,7 @@ function addRow() {
 
 function toggleCheck(id) {
   const t = tasks.find(x => x.id === id);
-  if (t) { t.done = !t.done; renderTasks(); savePlannerState(); }
+  if (t) { t.done = !t.done; renderTasks(); savePlannerStateNow(); }
 }
 
 function renderTasks() {
