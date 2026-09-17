@@ -8,6 +8,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
     onload="window.katexReady=true"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -18,6 +19,37 @@
     /* ══ 화면 전환 ══ */
     .page { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; flex-direction: column; }
     .page.active { display: flex; }
+
+    /* ══════════════════════════════════
+       로그인 화면
+    ══════════════════════════════════ */
+    #pg-login {
+      background: #f5f0e8;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-box {
+      width: 100%; max-width: 300px;
+      display: flex; flex-direction: column; gap: 12px;
+      padding: 24px;
+    }
+    .login-title {
+      font-size: 13px; font-weight: 700; letter-spacing: 4px;
+      color: rgba(0,0,0,0.3); text-align: center; margin-bottom: 8px;
+    }
+    .login-box input {
+      border: 1.5px solid #e0e0e0; border-radius: 12px;
+      padding: 12px 14px; font-size: 14px;
+      outline: none; font-family: inherit; width: 100%;
+    }
+    .login-box input:focus { border-color: #1c1c3a; }
+    .login-msg { font-size: 12px; min-height: 16px; text-align: center; }
+    .login-btn {
+      padding: 12px; border-radius: 12px; border: none;
+      font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .login-btn-primary { background: #1c1c3a; color: white; }
+    .login-btn-secondary { background: #f0f0f0; color: #444; }
 
     /* ══════════════════════════════════
        메인 페이지
@@ -177,6 +209,12 @@
       cursor: pointer;
     }
     .pick-back:hover { color: rgba(0,0,0,0.6); }
+
+    .pick-top-bar {
+      position: absolute;
+      top: 22px; left: 22px; right: 22px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
 
     .total-time-wrap {
       display: flex; flex-direction: column;
@@ -1030,7 +1068,7 @@
         gap: 40px;
       }
       .total-time-display { font-size: 38px; letter-spacing: 2px; }
-      #pg-pick > div[style*="position:absolute"] { top: 16px; right: 16px; }
+      .pick-top-bar { top: 16px; left: 16px; right: 16px; }
 
       /* 타이머 화면 */
       .timer-big { font-size: 54px; letter-spacing: 3px; }
@@ -1068,11 +1106,24 @@
 </head>
 <body>
 
+<!-- ══ 로그인 화면 ══ -->
+<div id="pg-login" class="page active">
+  <div class="login-box">
+    <div class="login-title">STUDY PLANNER</div>
+    <input id="login-email" type="email" placeholder="이메일" autocomplete="username">
+    <input id="login-password" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="current-password">
+    <div class="login-msg" id="login-msg"></div>
+    <button class="login-btn login-btn-primary"   onclick="doSignIn()">로그인</button>
+    <button class="login-btn login-btn-secondary" onclick="doSignUp()">회원가입</button>
+  </div>
+</div>
+
 <!-- ══ 메인 페이지 ══ -->
 
 <!-- ══ 과목 선택 화면 ══ -->
 <div id="pg-pick" class="page">
-  <div style="position:absolute;top:22px;right:22px;">
+  <div class="pick-top-bar">
+    <button class="btn-planner" onclick="doSignOut()">로그아웃</button>
     <button class="btn-planner" onclick="openPlanner()">플래너 열기</button>
   </div>
   <div class="total-time-wrap">
@@ -1287,7 +1338,7 @@
 </div>
 
 <!-- ══ 플래너 오버레이 ══ -->
-<div id="pg-planner" class="page active">
+<div id="pg-planner" class="page">
   <button class="planner-close-btn" onclick="closePlanner()">✕</button>
 
   <div class="paper">
@@ -1354,6 +1405,64 @@
 </div>
 
 <script>
+/* ── Supabase 연동 ── */
+const SUPABASE_URL = 'https://thezlkeiqulpusygdqcg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZXpsa2VpcXVscHVzeWdkcWNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2MjM3ODAsImV4cCI6MjEwNTE5OTc4MH0.7rbz0NphBsi4K3ood5ryTprHFohPVY7IWTHS3nBh4hc';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+async function doSignIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const msg = document.getElementById('login-msg');
+  msg.style.color = '#888'; msg.textContent = '로그인 중...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { msg.style.color = '#e74c3c'; msg.textContent = error.message; return; }
+  currentUser = data.user;
+  msg.textContent = '';
+  await loadAllData();
+  openPick();
+}
+
+async function doSignUp() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const msg = document.getElementById('login-msg');
+  if (password.length < 6) {
+    msg.style.color = '#e74c3c'; msg.textContent = '비밀번호는 6자 이상이어야 해요.'; return;
+  }
+  msg.style.color = '#888'; msg.textContent = '처리 중...';
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) { msg.style.color = '#e74c3c'; msg.textContent = error.message; return; }
+  msg.style.color = '#27ae60';
+  msg.textContent = '가입 완료! 이메일함에서 인증 링크를 눌러주세요.';
+}
+
+async function doSignOut() {
+  await sb.auth.signOut();
+  currentUser = null;
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-msg').textContent = '';
+  show('pg-login');
+}
+
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await loadAllData();
+    openPick();
+  } else {
+    show('pg-login');
+  }
+}
+
 /* ── 화면 전환 ── */
 function show(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1400,6 +1509,7 @@ let studySec = 0;
 let totalSec = 0;
 let studyStartTime = null;
 let studyColor = '#b8adff';
+let studySessions = [];
 
 function fmtTime(s) {
   const h = Math.floor(s / 3600);
@@ -1433,15 +1543,19 @@ function stopStudy() {
   clearInterval(studyInterval);
   studyInterval = null;
   if (studyStartTime) {
-    markStudiedSlots(studyStartTime, new Date());
+    const endTime = new Date();
+    markStudiedSlots(studyStartTime, endTime, studyColor);
+    studySessions.push({ start: studyStartTime.toISOString(), end: endTime.toISOString(), color: studyColor });
     studyStartTime = null;
+    savePlannerState();
   }
   studySec = 0;
   updateTotalDisplay();
   openPick();
 }
 
-function markStudiedSlots(startTime, endTime) {
+function markStudiedSlots(startTime, endTime, color) {
+  color = color || studyColor;
   const SLOT_MS = 10 * 60 * 1000;
   const cur = new Date(startTime);
   cur.setMinutes(Math.floor(cur.getMinutes() / 10) * 10, 0, 0);
@@ -1472,12 +1586,26 @@ function markStudiedSlots(startTime, endTime) {
           fill.style.left  = newLeft + '%';
           fill.style.width = (newRight - newLeft) + '%';
         }
-        fill.style.background = studyColor;
+        fill.style.background = color;
       }
     }
     cur.setTime(cur.getTime() + SLOT_MS);
   }
 }
+
+const savePlannerState = debounce(async () => {
+  if (!currentUser) return;
+  await sb.from('planner_state').upsert({
+    user_id: currentUser.id,
+    date_input: document.getElementById('date-input').value,
+    goal: document.querySelector('.goal-edit').textContent,
+    memo: document.querySelector('.memo-edit').textContent,
+    tasks,
+    study_sessions: studySessions,
+    total_sec: totalSec,
+    updated_at: new Date().toISOString()
+  });
+}, 800);
 
 /* ── 플래너: 날짜 ── */
 const today = new Date();
@@ -1491,6 +1619,7 @@ let tasks = [], seq = 0;
 function addRow() {
   tasks.push({ id: ++seq, subject:'', plan:'', page:'', timeRange:'', color: TASK_COLORS[tasks.length % TASK_COLORS.length], done:false });
   renderTasks();
+  savePlannerState();
   setTimeout(() => {
     const rows = document.querySelectorAll('.task-row');
     const last = rows[rows.length - 1];
@@ -1500,7 +1629,7 @@ function addRow() {
 
 function toggleCheck(id) {
   const t = tasks.find(x => x.id === id);
-  if (t) { t.done = !t.done; renderTasks(); }
+  if (t) { t.done = !t.done; renderTasks(); savePlannerState(); }
 }
 
 function renderTasks() {
@@ -1509,25 +1638,25 @@ function renderTasks() {
       <div class="tc" style="gap:5px;">
         <input type="color" value="${t.color}"
           style="width:14px;height:14px;border:none;border-radius:3px;padding:0;cursor:pointer;flex-shrink:0;background:none;visibility:${t.subject.trim()?'visible':'hidden'};"
-          oninput="tasks.find(x=>x.id===${t.id}).color=this.value;updatePlanHighlights()">
+          oninput="tasks.find(x=>x.id===${t.id}).color=this.value;updatePlanHighlights();savePlannerState()">
         <input type="text" value="${esc(t.subject)}"
-          oninput="tasks.find(x=>x.id===${t.id}).subject=this.value;this.previousElementSibling.style.visibility=this.value.trim()?'visible':'hidden';">
+          oninput="tasks.find(x=>x.id===${t.id}).subject=this.value;this.previousElementSibling.style.visibility=this.value.trim()?'visible':'hidden';savePlannerState()">
       </div>
       <div class="tc">
         <input type="text" value="${esc(t.plan)}"
           class="${t.done ? 'struck' : ''}"
-          oninput="tasks.find(x=>x.id===${t.id}).plan=this.value">
+          oninput="tasks.find(x=>x.id===${t.id}).plan=this.value;savePlannerState()">
       </div>
       <div class="tc" style="gap:3px;">
         <span style="font-size:11px;font-weight:800;color:#333;flex-shrink:0;">p.</span>
         <input type="text" value="${esc(t.page||'')}"
           style="font-size:11px;color:#222;font-weight:600;flex:1;min-width:0;"
-          oninput="tasks.find(x=>x.id===${t.id}).page=this.value">
+          oninput="tasks.find(x=>x.id===${t.id}).page=this.value;savePlannerState()">
       </div>
       <div class="tc">
         <input type="text" value="${esc(t.timeRange||'')}" placeholder="9~11시"
           style="font-size:10px;color:#222;font-weight:600;"
-          oninput="tasks.find(x=>x.id===${t.id}).timeRange=this.value;updatePlanHighlights()">
+          oninput="tasks.find(x=>x.id===${t.id}).timeRange=this.value;updatePlanHighlights();savePlannerState()">
       </div>
       <div class="tc center">
         <div class="chk${t.done ? ' done' : ''}" onclick="toggleCheck(${t.id})">${t.done ? '✓' : ''}</div>
@@ -1538,6 +1667,10 @@ function renderTasks() {
 
 for (let i = 0; i < 12; i++) tasks.push({ id: ++seq, subject:'', plan:'', page:'', timeRange:'', color: TASK_COLORS[i % TASK_COLORS.length], done:false });
 renderTasks();
+
+document.querySelector('.goal-edit').addEventListener('input', savePlannerState);
+document.querySelector('.memo-edit').addEventListener('input', savePlannerState);
+document.getElementById('date-input').addEventListener('input', savePlannerState);
 
 /* ── 목표 시간 하이라이트 ── */
 function parseTimeRange(str) {
@@ -1726,14 +1859,9 @@ function saveKey() {
 }
 
 /* ── 단어 암기 (단어장 + 4지선다 퀴즈) ── */
-let vocabSets = JSON.parse(localStorage.getItem('vocab_sets') || 'null');
-if (!vocabSets) {
-  const legacyWords = JSON.parse(localStorage.getItem('vocab_list') || '[]');
-  vocabSets = legacyWords.length ? [{ id: 'default', name: '기본 단어장', words: legacyWords }] : [];
-  localStorage.setItem('vocab_sets', JSON.stringify(vocabSets));
-}
-let currentSetId = vocabSets.length ? vocabSets[0].id : null;
-let vocabList = currentSetId ? vocabSets.find(s => s.id === currentSetId).words : [];
+let vocabSets = [];
+let currentSetId = null;
+let vocabList = [];
 let quizQueue    = [];
 let quizIdx      = 0;
 let quizCorrect  = 0;
@@ -1742,8 +1870,11 @@ let quizAnswered = false;
 let quizCorrectKo = '';
 let vocabFrom = 'pg-timer';
 
-function saveVocabSets() {
-  localStorage.setItem('vocab_sets', JSON.stringify(vocabSets));
+async function saveVocabSets() {
+  if (!currentUser || !vocabSets.length) return;
+  await sb.from('vocab_sets').upsert(
+    vocabSets.map(s => ({ id: s.id, user_id: currentUser.id, name: s.name, words: s.words, updated_at: new Date().toISOString() }))
+  );
 }
 
 function openVocab() {
@@ -1789,11 +1920,11 @@ function enterVocabSet(id) {
   show('pg-vocab');
 }
 
-function deleteVocabSet(id) {
+async function deleteVocabSet(id) {
   if (!confirm('이 단어장을 삭제할까요? 안에 있는 단어도 함께 삭제됩니다.')) return;
   vocabSets = vocabSets.filter(s => s.id !== id);
-  saveVocabSets();
   renderVocabSetsList();
+  if (currentUser) await sb.from('vocab_sets').delete().eq('id', id);
 }
 
 function openSetModal() {
@@ -2070,14 +2201,7 @@ const REWARDS = ['⭐','🍎','💎','🎯','🏆','🌟','🎁','🔥','💫','
 let calYear = today.getFullYear();
 let calMonth = today.getMonth();
 let calFrom  = 'pg-pick';
-let attendance = JSON.parse(localStorage.getItem('attendance') || '{}');
-
-/* 출석 데이터 초기화 (1회) */
-if (!localStorage.getItem('attendance_reset_v2')) {
-  attendance = {};
-  localStorage.setItem('attendance', JSON.stringify({}));
-  localStorage.setItem('attendance_reset_v2', '1');
-}
+let attendance = {};
 
 function openCal(from) {
   calFrom  = from || 'pg-pick';
@@ -2159,9 +2283,9 @@ function renderCal() {
   document.getElementById('cal-grid').innerHTML = html;
 }
 
-function doAttend(key, el) {
+async function doAttend(key, el) {
   attendance[key] = true;
-  localStorage.setItem('attendance', JSON.stringify(attendance));
+  if (currentUser) await sb.from('attendance').upsert({ user_id: currentUser.id, date_key: key, done: true });
   el.classList.add('cal-done', 'popping');
   el.onclick = null;
   const mark = document.createElement('div');
@@ -2202,8 +2326,13 @@ const HOLIDAYS = {
 };
 
 /* ── 시험 기간 ── */
-let exams = JSON.parse(localStorage.getItem('exam_periods') || '{"mid":null,"final":null}');
+let exams = { mid: null, final: null };
 let currentExamType = null;
+
+async function saveExamsToDb() {
+  if (!currentUser) return;
+  await sb.from('exam_periods').upsert({ user_id: currentUser.id, mid: exams.mid, final: exams.final });
+}
 
 function openExamModal(type) {
   currentExamType = type;
@@ -2221,7 +2350,7 @@ function saveExam() {
   const end   = document.getElementById('exam-end').value;
   if (!start || !end) return;
   exams[currentExamType] = { start, end };
-  localStorage.setItem('exam_periods', JSON.stringify(exams));
+  saveExamsToDb();
   updateExamBtns();
   updateDDay();
   closeExamModal();
@@ -2229,7 +2358,7 @@ function saveExam() {
 }
 function deleteExam() {
   exams[currentExamType] = null;
-  localStorage.setItem('exam_periods', JSON.stringify(exams));
+  saveExamsToDb();
   updateExamBtns();
   updateDDay();
   closeExamModal();
@@ -2282,6 +2411,51 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+/* ── 로그인한 계정의 데이터를 Supabase에서 불러오기 ── */
+async function loadAllData() {
+  const uid = currentUser.id;
+
+  // 단어장
+  const { data: vsRows } = await sb.from('vocab_sets').select('*').order('updated_at');
+  vocabSets = (vsRows || []).map(r => ({ id: r.id, name: r.name, words: r.words || [] }));
+  currentSetId = vocabSets.length ? vocabSets[0].id : null;
+  vocabList = currentSetId ? vocabSets.find(s => s.id === currentSetId).words : [];
+
+  // 플래너 (오늘의 목표/메모/과목계획/공부 세션)
+  const { data: psRow } = await sb.from('planner_state').select('*').eq('user_id', uid).maybeSingle();
+  if (psRow) {
+    if (psRow.date_input) document.getElementById('date-input').value = psRow.date_input;
+    document.querySelector('.goal-edit').textContent = psRow.goal || '';
+    document.querySelector('.memo-edit').textContent = psRow.memo || '';
+    if (psRow.tasks && psRow.tasks.length) {
+      tasks = psRow.tasks;
+      seq = tasks.reduce((m, t) => Math.max(m, t.id), 0);
+    }
+    totalSec = psRow.total_sec || 0;
+    studySessions = psRow.study_sessions || [];
+  }
+  renderTasks();
+  updatePlanHighlights();
+  updateTotalDisplay();
+  document.querySelectorAll('.t-slot-fill').forEach(el => el.remove());
+  studySessions.forEach(s => markStudiedSlots(new Date(s.start), new Date(s.end), s.color));
+  if (!psRow) savePlannerState();
+
+  // 출석
+  const { data: attRows } = await sb.from('attendance').select('date_key,done');
+  attendance = {};
+  (attRows || []).forEach(r => { if (r.done) attendance[r.date_key] = true; });
+
+  // 시험 기간
+  const { data: exRow } = await sb.from('exam_periods').select('*').eq('user_id', uid).maybeSingle();
+  exams = exRow ? { mid: exRow.mid, final: exRow.final } : { mid: null, final: null };
+  updateExamBtns();
+  updateDDay();
+  renderCal();
+}
+
+initAuth();
 </script>
 </body>
 </html>
