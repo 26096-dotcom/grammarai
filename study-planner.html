@@ -1437,10 +1437,17 @@ async function doSignUp() {
     msg.style.color = '#e74c3c'; msg.textContent = '비밀번호는 6자 이상이어야 해요.'; return;
   }
   msg.style.color = '#888'; msg.textContent = '처리 중...';
-  const { error } = await sb.auth.signUp({ email, password });
+  const { data, error } = await sb.auth.signUp({ email, password });
   if (error) { msg.style.color = '#e74c3c'; msg.textContent = error.message; return; }
-  msg.style.color = '#27ae60';
-  msg.textContent = '가입 완료! 이메일함에서 인증 링크를 눌러주세요.';
+  if (data.session) {
+    currentUser = data.user;
+    msg.textContent = '';
+    await loadAllData();
+    openPick();
+  } else {
+    msg.style.color = '#27ae60';
+    msg.textContent = '가입 완료! 이메일함에서 인증 링크를 눌러주세요.';
+  }
 }
 
 async function doSignOut() {
