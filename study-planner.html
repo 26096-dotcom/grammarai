@@ -1,0 +1,2287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>공부 플래너</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="window.katexReady=true"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      height: 100vh; overflow: hidden;
+    }
+
+    /* ══ 화면 전환 ══ */
+    .page { position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: none; flex-direction: column; }
+    .page.active { display: flex; }
+
+    /* ══════════════════════════════════
+       메인 페이지
+    ══════════════════════════════════ */
+    #pg-main {
+      background: #f5f0e8;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .main-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 24px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .app-title {
+      font-size: 13px; font-weight: 700;
+      color: rgba(0,0,0,0.25);
+      letter-spacing: 5px;
+    }
+    .btn-planner {
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.45);
+      border: 1px solid rgba(0,0,0,0.12);
+      padding: 8px 18px; border-radius: 20px;
+      cursor: pointer; font-size: 13px; font-family: inherit;
+      transition: background 0.2s;
+    }
+    .btn-planner:hover { background: rgba(0,0,0,0.1); color: rgba(0,0,0,0.7); }
+
+    .main-center {
+      display: flex; flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .card-grid {
+      position: absolute;
+      bottom: -92px;
+      left: 0; right: 0;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 38px;
+      padding: 0 40px;
+    }
+
+    .home-card {
+      background: #fff;
+      border-radius: 32px;
+      width: 108px;
+      height: 130px;
+      flex-shrink: 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.09);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 20px;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .home-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.13);
+    }
+    .home-card .card-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+    .home-card .card-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(0,0,0,0.35);
+      letter-spacing: 0.5px;
+      text-align: center;
+    }
+
+    .side-col {
+      position: absolute;
+      right: -38px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .side-col .home-card {
+      width: 76px;
+      height: 90px;
+      border-radius: 24px;
+    }
+    .side-col .home-card:hover {
+      transform: translateX(-4px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.13);
+    }
+
+    /* ── 마스코트 (병아리) ── */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-12px); }
+    }
+    @keyframes blink {
+      0%, 88%, 100% { transform: scaleY(1); }
+      93%            { transform: scaleY(0.06); }
+    }
+    .mascot {
+      animation: float 3.4s ease-in-out infinite;
+      margin-top: 72px;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 14px 20px rgba(255,185,0,0.28));
+    }
+    .chick-eye {
+      animation: blink 4s ease-in-out infinite;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .main-subjects {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 14px;
+      min-height: 50px;
+    }
+    .main-subject-item {
+      font-size: 17px; font-weight: 500;
+      color: rgba(0,0,0,0.4);
+      letter-spacing: 1px;
+    }
+    .main-empty {
+      font-size: 13px;
+      color: rgba(0,0,0,0.2);
+      letter-spacing: 0.5px;
+    }
+
+    /* ══════════════════════════════════
+       과목 선택 화면
+    ══════════════════════════════════ */
+    #pg-pick {
+      background: #f5f0e8;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 38vh;
+      gap: 72px;
+    }
+
+    .pick-back {
+      position: absolute;
+      top: 22px; left: 22px;
+      background: none; border: none;
+      font-size: 22px; color: rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .pick-back:hover { color: rgba(0,0,0,0.6); }
+
+    .total-time-wrap {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 6px;
+    }
+    .total-time-label {
+      font-size: 11px; font-weight: 700;
+      color: rgba(0,0,0,0.3); letter-spacing: 2px;
+    }
+    .total-time-display {
+      font-size: 56px; font-weight: 700;
+      color: #1c1c3a; letter-spacing: 3px;
+      font-family: 'Courier New', monospace;
+      line-height: 1;
+    }
+
+    .pick-list {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 12px;
+      width: 100%;
+    }
+    .pick-subject {
+      font-size: 18px; font-weight: 600;
+      color: rgba(0,0,0,0.55);
+      cursor: pointer;
+      padding: 6px 20px; border-radius: 30px;
+      transition: background 0.15s, color 0.15s;
+      font-family: inherit;
+      background: none; border: none;
+    }
+    .pick-subject:hover {
+      background: rgba(0,0,0,0.07);
+      color: rgba(0,0,0,0.85);
+    }
+    .pick-empty {
+      font-size: 14px; color: rgba(0,0,0,0.25);
+    }
+    .pick-cancel {
+      background: none; color: rgba(0,0,0,0.25);
+      border: none; font-size: 14px;
+      cursor: pointer; font-family: inherit;
+      padding: 8px 20px; border-radius: 20px;
+      transition: color 0.2s;
+    }
+    .pick-cancel:hover { color: rgba(255,255,255,0.65); }
+
+    /* ══════════════════════════════════
+       공부 타이머 화면
+    ══════════════════════════════════ */
+    #pg-timer {
+      background: linear-gradient(160deg, #0d0d20 0%, #1a1230 100%);
+      align-items: center; justify-content: center;
+      gap: 24px;
+    }
+    .timer-badge {
+      font-size: 13px; font-weight: 700;
+      color: #9b8ff5; letter-spacing: 3px;
+    }
+    .timer-big {
+      font-size: 88px; font-weight: 700;
+      color: white; letter-spacing: 6px;
+      font-family: 'Courier New', monospace;
+      line-height: 1;
+    }
+    .timer-stop {
+      width: 76px; height: 76px;
+      border-radius: 50%;
+      background: #e74c3c; color: white;
+      border: none; font-size: 30px;
+      cursor: pointer; margin-top: 20px;
+      box-shadow: 0 0 40px rgba(231,76,60,0.45);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.15s;
+    }
+    .timer-stop:hover { transform: scale(1.08); }
+
+    .timer-btns {
+      display: flex; justify-content: center; gap: 14px;
+      margin-top: 16px;
+    }
+    .timer-ai-btn {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.18);
+      padding: 10px 20px; border-radius: 24px;
+      font-size: 14px; cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+    .timer-ai-btn:hover { background: rgba(255,255,255,0.2); }
+
+    /* ══════════════════════════════════
+       AI 문제 풀기 화면
+    ══════════════════════════════════ */
+    #pg-ai {
+      background: #f5f0e8;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+    }
+
+    .ai-header {
+      width: 100%; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 20px 24px;
+      flex-shrink: 0;
+    }
+    .ai-back {
+      background: none; border: none;
+      font-size: 22px; color: rgba(0,0,0,0.35);
+      cursor: pointer;
+    }
+    .ai-back:hover { color: rgba(0,0,0,0.7); }
+    .ai-title {
+      font-size: 15px; font-weight: 700;
+      color: #1c1c3a; letter-spacing: 1px;
+    }
+    .ai-setting {
+      background: none; border: none;
+      font-size: 20px; color: rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .ai-setting:hover { color: rgba(0,0,0,0.6); }
+
+    .ai-body {
+      flex: 1; width: 100%; max-width: 560px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 20px;
+      padding: 8px 24px 48px;
+    }
+
+    .ai-upload {
+      width: 100%; min-height: 200px;
+      border: 2px dashed rgba(0,0,0,0.18);
+      border-radius: 20px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: rgba(255,255,255,0.5);
+      overflow: hidden; position: relative;
+    }
+    .ai-upload:hover { border-color: rgba(0,0,0,0.35); background: rgba(255,255,255,0.8); }
+    .ai-upload-icon { font-size: 36px; }
+    .ai-upload-text { font-size: 14px; color: rgba(0,0,0,0.4); }
+    .ai-preview {
+      width: 100%; max-height: 320px;
+      object-fit: contain; border-radius: 16px;
+      display: none;
+    }
+
+    .ai-solve-btn {
+      width: 100%; padding: 16px;
+      background: #1c1c3a; color: white;
+      border: none; border-radius: 16px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      transition: opacity 0.2s;
+    }
+    .ai-solve-btn:hover { opacity: 0.85; }
+    .ai-solve-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .ai-loading {
+      display: none; flex-direction: column;
+      align-items: center; gap: 12px;
+    }
+    .ai-spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(0,0,0,0.1);
+      border-top-color: #1c1c3a;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ai-loading-text { font-size: 13px; color: rgba(0,0,0,0.4); }
+
+    .ai-answer-box {
+      width: 100%; background: white;
+      border-radius: 18px; padding: 20px 22px;
+      font-size: 14px; line-height: 2;
+      color: #222; white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+      display: none;
+    }
+    .ai-answer-box .katex-display { margin: 10px 0; overflow-x: auto; }
+    .ai-answer-box .katex { font-size: 1.1em; }
+
+    /* API 키 모달 */
+    .key-modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 2000; display: none;
+      align-items: center; justify-content: center;
+    }
+    .key-modal-bg.open { display: flex; }
+    .key-modal {
+      background: white; border-radius: 20px;
+      padding: 28px 28px 24px;
+      width: 340px; display: flex;
+      flex-direction: column; gap: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    }
+    .key-modal h3 { font-size: 16px; color: #1c1c3a; }
+    .key-modal p { font-size: 12px; color: #888; line-height: 1.6; }
+    .key-modal input {
+      border: 1.5px solid #e0e0e0; border-radius: 10px;
+      padding: 11px 14px; font-size: 13px;
+      outline: none; font-family: monospace; width: 100%;
+    }
+    .key-modal input:focus { border-color: #1c1c3a; }
+    .key-modal-btns { display: flex; gap: 10px; }
+    .key-save {
+      flex: 1; background: #1c1c3a; color: white;
+      border: none; border-radius: 10px;
+      padding: 11px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .key-cancel {
+      background: #f0f0f0; color: #666;
+      border: none; border-radius: 10px;
+      padding: 11px 16px; font-size: 14px;
+      cursor: pointer; font-family: inherit;
+    }
+
+    /* ══════════════════════════════════
+       플래너 오버레이
+    ══════════════════════════════════ */
+    #pg-planner {
+      background: #aaa;
+      overflow-y: auto;
+      align-items: center;
+      padding: 40px 20px 80px;
+    }
+
+    .planner-close-btn {
+      position: fixed;
+      top: 18px; right: 18px;
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.35);
+      color: white; border: none;
+      font-size: 20px; cursor: pointer;
+      z-index: 50;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .planner-close-btn:hover { background: rgba(0,0,0,0.6); }
+
+    /* ── A4 용지 ── */
+    .paper {
+      width: 794px; min-height: 1123px;
+      background: #fff;
+      padding: 56px 40px 36px;
+      box-shadow: 0 10px 50px rgba(0,0,0,0.28);
+      display: flex; flex-direction: column;
+    }
+    .paper-title {
+      text-align: center;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 7px; color: #222;
+      margin-bottom: 16px;
+    }
+
+    /* ── 테이블 외곽 ── */
+    .tbl {
+      border: 2px solid #222;
+      flex: 1; display: flex; flex-direction: column;
+    }
+
+    /* 행 1: 날짜(3) + 빈칸(2) */
+    .row-date {
+      display: grid; grid-template-columns: 3fr 2fr;
+      border-bottom: 2px solid #222; height: 80px;
+    }
+    .cell-date {
+      display: flex; align-items: center;
+      padding: 0 16px; border-right: 2px solid #222; gap: 10px;
+    }
+    .cell-date .lbl {
+      font-size: 11px; font-weight: 700;
+      color: #888; letter-spacing: 1px; white-space: nowrap;
+    }
+    .cell-date input {
+      border: none; outline: none;
+      font-size: 15px; color: #111;
+      background: transparent; font-family: inherit; flex: 1;
+    }
+    .cell-blank { }
+
+    /* 행 2: 오늘의 목표 */
+    .row-goal {
+      border-bottom: 2px solid #222;
+      padding: 10px 16px 12px;
+      flex: 1; display: flex; flex-direction: column;
+    }
+    .row-goal .lbl {
+      font-size: 10px; font-weight: 700;
+      color: #999; letter-spacing: 1.5px; margin-bottom: 0;
+    }
+    .goal-wrap {
+      flex: 1; display: flex;
+      align-items: center; justify-content: center;
+    }
+    .goal-edit {
+      text-align: center;
+      font-size: 13.5px; color: #111;
+      outline: none; line-height: 1.9;
+      font-family: inherit; width: 100%;
+      white-space: pre-wrap; word-break: break-word; cursor: text;
+    }
+    .goal-edit:empty::before {
+      content: attr(data-placeholder); color: #ccc; pointer-events: none;
+    }
+
+    /* 행 3: 메인 */
+    .row-main { display: grid; grid-template-columns: 3fr 2fr; }
+
+    /* 좌: 과목/계획/체크 */
+    .task-col {
+      border-right: 2px solid #222;
+      display: flex; flex-direction: column;
+    }
+    .task-head {
+      display: grid; grid-template-columns: 76px 1fr 52px 86px 36px;
+      background: #f6f6f6; border-bottom: 1.5px solid #333;
+    }
+    .th {
+      padding: 6px 0; font-size: 11px; font-weight: 700;
+      color: #444; text-align: center; letter-spacing: 1.5px;
+    }
+    .th + .th { border-left: 1.5px solid #333; }
+
+    .task-body { display: flex; flex-direction: column; }
+
+    .task-row {
+      display: grid; grid-template-columns: 76px 1fr 52px 86px 36px;
+      border-bottom: 1px solid #ebebeb; height: 30px;
+    }
+    .task-row:last-of-type { border-bottom: none; }
+
+    .tc { display: flex; align-items: center; padding: 3px 8px; }
+    .tc + .tc { border-left: 1px solid #ebebeb; }
+    .tc input[type="text"] {
+      width: 100%; border: none; outline: none;
+      font-size: 12px; color: #222;
+      background: transparent; font-family: inherit;
+    }
+    .tc input.struck { text-decoration: line-through; color: #ccc; }
+    .tc.center { justify-content: center; }
+
+    .chk {
+      width: 17px; height: 17px;
+      border: 1.5px solid #bbb; border-radius: 3px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: transparent;
+      user-select: none; flex-shrink: 0; transition: all 0.12s;
+    }
+    .chk.done { background: #222; border-color: #222; color: #fff; }
+
+    .btn-add-row {
+      border: none; background: none;
+      border-top: 1px dashed #e0e0e0;
+      color: #ccc; font-size: 12px;
+      padding: 7px 12px; cursor: pointer;
+      text-align: left; font-family: inherit; width: 100%;
+    }
+    .btn-add-row:hover { color: #777; background: #fafafa; }
+
+    /* 메모 칸 */
+    .task-memo {
+      height: 122px;
+      border-top: 1.5px solid #333;
+      padding: 10px 10px 12px;
+      display: flex; flex-direction: column;
+      background: #fafafa;
+    }
+    .task-memo .lbl {
+      font-size: 10px; font-weight: 700;
+      color: #999; letter-spacing: 1.5px; margin-bottom: 6px;
+    }
+    .memo-edit {
+      flex: 1; outline: none;
+      font-size: 13px; color: #111;
+      font-family: inherit; line-height: 1.9;
+      white-space: pre-wrap; word-break: break-word; cursor: text;
+    }
+    .memo-edit:empty::before {
+      content: attr(data-placeholder); color: #ccc; pointer-events: none;
+    }
+
+    /* 우: 공부 시간 체크 표 */
+    .time-col { display: flex; flex-direction: column; }
+    .time-head {
+      display: grid; grid-template-columns: 36px repeat(6, 1fr);
+      background: #f6f6f6; border-bottom: 1.5px solid #333;
+    }
+    .tth {
+      padding: 6px 0; font-size: 10px; font-weight: 700;
+      color: #444; text-align: center; letter-spacing: 0.5px;
+    }
+    .tth + .tth { border-left: 1px solid #ccc; }
+
+    .time-body { flex: 1; }
+    .time-row {
+      display: grid; grid-template-columns: 36px repeat(6, 1fr);
+      border-bottom: 1px solid #ebebeb; height: 30px;
+    }
+    .time-row:last-child { border-bottom: none; }
+    .t-label {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #bbb; font-weight: 600;
+      border-right: 1px solid #ebebeb;
+    }
+    .t-slot { border-right: 1px solid #ebebeb; position: relative; overflow: hidden; }
+    .t-slot:last-child { border-right: none; }
+    .t-slot-plan {
+      position: absolute;
+      top: 0; bottom: 0; left: 0; right: 0;
+      background: rgba(255, 195, 60, 0.18);
+      pointer-events: none;
+    }
+    .t-slot-fill {
+      position: absolute;
+      top: 0; bottom: 0;
+      background: #b8adff;
+      transition: left 0.4s ease, width 0.4s ease;
+    }
+
+
+    /* ══════════════════════════════════
+       단어 암기 화면
+    ══════════════════════════════════ */
+    #pg-vocab {
+      background: #1a1230;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px 40px;
+    }
+
+    /* ── 단어장(파일) 선택 화면 ── */
+    #pg-vocab-sets {
+      background: #1a1230;
+      flex-direction: column;
+      align-items: center;
+    }
+    .vocab-sets-body {
+      flex: 1; width: 100%; max-width: 420px;
+      margin: 0 auto; padding: 8px 24px 40px;
+      display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    .vocab-set-card {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px; padding: 16px 18px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .vocab-set-card:hover { background: rgba(255,255,255,0.11); }
+    .vocab-set-name { font-size: 15px; font-weight: 700; color: white; }
+    .vocab-set-count { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; }
+    .vocab-set-del {
+      background: none; border: none; color: rgba(255,255,255,0.25);
+      font-size: 16px; cursor: pointer; padding: 4px 8px; flex-shrink: 0;
+    }
+    .vocab-set-del:hover { color: #e74c3c; }
+    .vocab-sets-empty {
+      font-size: 13px; color: rgba(255,255,255,0.25);
+      text-align: center; margin-top: 40px;
+    }
+    .vocab-header {
+      width: 100%; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 22px 4px 0;
+      flex-shrink: 0;
+    }
+    .vocab-back {
+      background: none; border: none;
+      font-size: 22px; color: rgba(255,255,255,0.4);
+      cursor: pointer;
+    }
+    .vocab-back:hover { color: rgba(255,255,255,0.8); }
+    .vocab-progress {
+      font-size: 13px; font-weight: 700;
+      color: rgba(255,255,255,0.35); letter-spacing: 2px;
+    }
+    .vocab-add-btn {
+      background: none; border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.45); font-size: 13px;
+      padding: 6px 14px; border-radius: 16px;
+      cursor: pointer; font-family: inherit;
+      transition: all 0.15s;
+    }
+    .vocab-add-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+
+    /* ── 학습 단계 ── */
+    .study-wrap {
+      flex: 1; display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; width: 100%; padding: 0 24px 40px;
+    }
+    .study-card {
+      width: 100%; max-width: 380px; min-height: 210px;
+      background: white; border-radius: 28px;
+      padding: 32px; cursor: pointer;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      transition: transform 0.12s;
+    }
+    .study-card:active { transform: scale(0.98); }
+    .study-en { font-size: 36px; font-weight: 800; color: #1a1230; text-align: center; }
+    .study-hint { font-size: 12px; color: #bbb; letter-spacing: 1px; }
+    .study-reveal { display: none; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+    .study-ko { font-size: 26px; font-weight: 700; color: #6c5fff; text-align: center; }
+    .study-ex { font-size: 12px; color: #aaa; text-align: center; line-height: 1.7; }
+    .study-syn-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .study-syn-lbl { font-size: 10px; font-weight: 800; color: #ccc; letter-spacing: 1.5px; }
+
+    /* ── 퀴즈 ── */
+    .quiz-word-wrap {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 14px; width: 100%; padding: 0 28px;
+    }
+    .quiz-word {
+      font-size: 40px; font-weight: 800;
+      color: white; text-align: center; letter-spacing: 1px;
+    }
+    .quiz-ex {
+      font-size: 13px; color: rgba(255,255,255,0.3);
+      text-align: center; line-height: 1.7; max-width: 320px;
+    }
+    .quiz-syn-info {
+      display: none; flex-direction: column; gap: 6px;
+      width: 100%; max-width: 360px; margin-top: 4px;
+    }
+    .quiz-syn-info.visible { display: flex; }
+    .quiz-syn-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .quiz-syn-lbl { font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.25); letter-spacing: 1.5px; white-space: nowrap; }
+    .quiz-chip     { background: rgba(108,95,255,0.25); color: #c4bdff; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+    .quiz-chip.ant { background: rgba(231,76,60,0.2);  color: #ffaaaa; }
+
+    .quiz-score {
+      font-size: 12px; color: rgba(255,255,255,0.22);
+      letter-spacing: 1px; padding: 0 28px 8px;
+      text-align: center;
+    }
+    .quiz-options {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; width: 100%; max-width: 400px; padding: 0 24px;
+    }
+    .quiz-opt {
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.75);
+      border-radius: 18px; padding: 18px 10px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      transition: background 0.12s; text-align: center;
+    }
+    .quiz-opt:hover:not(:disabled) { background: rgba(255,255,255,0.14); }
+    .quiz-opt.correct { background: #27ae60; border-color: #27ae60; color: white; }
+    .quiz-opt.wrong   { background: #e74c3c; border-color: #e74c3c; color: white; }
+    .quiz-opt:disabled { cursor: default; }
+    .quiz-type-btn {
+      width: 100%; max-width: 320px;
+      padding: 16px; border-radius: 18px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.8);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .quiz-type-btn:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.25); }
+    .quiz-type-btn-syn { border-color: rgba(108,95,255,0.4); color: #c4bdff; }
+    .quiz-type-btn-syn:hover { background: rgba(108,95,255,0.15); }
+    .quiz-type-btn-ant { border-color: rgba(231,76,60,0.4); color: #ffaaaa; }
+    .quiz-type-btn-ant:hover { background: rgba(231,76,60,0.1); }
+    .quiz-next {
+      width: calc(100% - 48px); max-width: 400px;
+      margin: 14px 24px 32px; padding: 16px;
+      background: #6c5fff; color: white;
+      border: none; border-radius: 18px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      display: none;
+      box-shadow: 0 6px 20px rgba(108,95,255,0.45);
+    }
+
+    /* 단어 추가 모달 */
+    .vocab-modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55); z-index: 3000;
+      display: none; align-items: center; justify-content: center;
+    }
+    .vocab-modal-bg.open { display: flex; }
+    .vocab-modal {
+      background: white; border-radius: 22px;
+      padding: 28px; width: 320px;
+      display: flex; flex-direction: column; gap: 14px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.3);
+    }
+    .vocab-modal h3 { font-size: 16px; color: #1a1230; }
+    .vocab-modal input {
+      border: 1.5px solid #e0e0e0; border-radius: 12px;
+      padding: 11px 14px; font-size: 14px;
+      outline: none; font-family: inherit; width: 100%;
+    }
+    .vocab-modal input:focus { border-color: #6c5fff; }
+    .vocab-modal-btns { display: flex; gap: 10px; }
+    .vocab-modal-save {
+      flex: 1; background: #6c5fff; color: white;
+      border: none; border-radius: 12px;
+      padding: 11px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .vocab-modal-cancel {
+      background: #f0f0f0; color: #666;
+      border: none; border-radius: 12px;
+      padding: 11px 16px; font-size: 14px;
+      cursor: pointer; font-family: inherit;
+    }
+
+    .paper-foot {
+      margin-top: 16px; text-align: center;
+      font-size: 9.5px; color: #ddd; letter-spacing: 3px;
+    }
+
+    /* ══════════════════════════════════
+       달력 / 출석 화면
+    ══════════════════════════════════ */
+    #pg-cal {
+      background: #f5f0e8;
+      flex-direction: column;
+      align-items: center;
+      overflow-y: auto;
+    }
+
+    .cal-header {
+      width: 100%; display: flex;
+      align-items: center; justify-content: space-between;
+      padding: 22px 28px 10px;
+      flex-shrink: 0;
+    }
+    .cal-back {
+      background: none; border: none;
+      font-size: 22px; color: rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .cal-back:hover { color: rgba(0,0,0,0.65); }
+    .cal-title {
+      font-size: 17px; font-weight: 800;
+      color: #1c1c3a; letter-spacing: 1px;
+    }
+    .cal-nav {
+      background: none; border: none;
+      font-size: 18px; color: rgba(0,0,0,0.3);
+      cursor: pointer; padding: 4px 10px;
+      border-radius: 12px; transition: background 0.15s;
+    }
+    .cal-nav:hover { background: rgba(0,0,0,0.07); color: rgba(0,0,0,0.6); }
+
+    .cal-streak {
+      font-size: 12px; font-weight: 700;
+      color: rgba(0,0,0,0.3); letter-spacing: 1px;
+      margin-bottom: 18px;
+    }
+    .cal-streak span { color: #7c6fff; font-size: 15px; }
+
+    .cal-day-names {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      width: 100%; max-width: 640px;
+      padding: 0 20px; margin-bottom: 8px;
+    }
+    .cal-dn {
+      text-align: center; font-size: 11px;
+      font-weight: 700; color: rgba(0,0,0,0.25);
+      letter-spacing: 0.5px; padding: 6px 0;
+    }
+    .cal-dn:first-child { color: #e74c3c; }
+    .cal-dn:last-child  { color: #5b9bd5; }
+
+    .cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      width: 100%; max-width: 640px;
+      padding: 0 20px; gap: 9px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border-radius: 16px;
+      background: white;
+      cursor: pointer; position: relative;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: transform 0.15s, box-shadow 0.15s;
+      gap: 1px;
+      user-select: none;
+    }
+    .cal-day:hover:not(.empty):not(.future) { transform: scale(1.08); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+    .cal-day.empty { background: none; box-shadow: none; cursor: default; }
+
+    .cal-day-num {
+      font-size: 11px; font-weight: 700;
+      color: rgba(0,0,0,0.45); line-height: 1;
+    }
+    .cal-reward-icon { font-size: 17px; line-height: 1; filter: grayscale(1) opacity(0.25); }
+
+    .cal-day.cal-today {
+      background: #1c1c3a;
+      box-shadow: 0 4px 18px rgba(28,28,58,0.35);
+    }
+    .cal-day.cal-today .cal-day-num { color: rgba(255,255,255,0.7); }
+    .cal-day.cal-today .cal-reward-icon { filter: none; }
+
+    .cal-day.cal-done {
+      background: linear-gradient(135deg, #6c5fff 0%, #b8adff 100%);
+      box-shadow: 0 4px 16px rgba(108,95,255,0.45);
+    }
+    .cal-day.cal-done .cal-day-num { color: rgba(255,255,255,0.85); }
+    .cal-day.cal-done .cal-reward-icon { filter: none; }
+
+    .cal-done-mark {
+      position: absolute; top: 3px; right: 5px;
+      font-size: 8px; color: rgba(255,255,255,0.9); font-weight: 900;
+    }
+
+    .cal-day.future { cursor: default; }
+    .cal-day.future .cal-reward-icon { filter: grayscale(1) opacity(0.12); }
+
+    .cal-day.holiday .cal-day-num { color: #e74c3c; }
+    .cal-holiday-name {
+      position: absolute; bottom: 3px; left: 0; right: 0;
+      font-size: 6.5px; color: #e74c3c; font-weight: 800;
+      text-align: center; overflow: hidden; white-space: nowrap;
+      padding: 0 2px;
+    }
+
+    .cal-day.exam-mid { background: #fff0f0; box-shadow: 0 2px 8px rgba(231,76,60,0.12); }
+    .cal-day.exam-mid .cal-day-num { color: #e74c3c; }
+    .cal-day.exam-final { background: #fff5e6; box-shadow: 0 2px 8px rgba(255,140,0,0.12); }
+    .cal-day.exam-final .cal-day-num { color: #e67e00; }
+    .cal-exam-badge {
+      position: absolute; bottom: 4px;
+      font-size: 7px; font-weight: 800; letter-spacing: 0.5px;
+    }
+    .exam-mid .cal-exam-badge  { color: #e74c3c; }
+    .exam-final .cal-exam-badge { color: #e67e00; }
+
+    /* 시험 기간 설정 패널 */
+    .exam-panel {
+      width: 100%; max-width: 640px;
+      padding: 0 20px 12px;
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .exam-btn {
+      flex: 1; min-width: 120px;
+      padding: 9px 14px; border-radius: 14px;
+      border: 1.5px solid rgba(0,0,0,0.1);
+      background: white; font-size: 12px; font-weight: 700;
+      color: rgba(0,0,0,0.5); cursor: pointer;
+      font-family: inherit; text-align: left;
+      transition: all 0.15s;
+    }
+    .exam-btn:hover { border-color: rgba(0,0,0,0.25); color: rgba(0,0,0,0.8); }
+    .exam-btn.set-mid   { border-color: #f5a9a9; color: #e74c3c; background: #fff5f5; }
+    .exam-btn.set-final { border-color: #ffd09b; color: #e67e00; background: #fff9f0; }
+
+    /* 시험 기간 설정 모달 */
+    .exam-modal-bg {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 3000;
+      display: none; align-items: center; justify-content: center;
+    }
+    .exam-modal-bg.open { display: flex; }
+    .exam-modal {
+      background: white; border-radius: 22px;
+      padding: 28px; width: 320px;
+      display: flex; flex-direction: column; gap: 14px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+    }
+    .exam-modal h3 { font-size: 16px; color: #1a1230; margin: 0; }
+    .exam-modal label { font-size: 12px; color: #888; margin-bottom: 4px; display: block; }
+    .exam-modal input[type="date"] {
+      border: 1.5px solid #e0e0e0; border-radius: 12px;
+      padding: 10px 14px; font-size: 14px;
+      outline: none; font-family: inherit; width: 100%;
+    }
+    .exam-modal input[type="date"]:focus { border-color: #6c5fff; }
+    .exam-modal-btns { display: flex; gap: 10px; }
+    .exam-modal-save {
+      flex: 1; background: #1a1230; color: white;
+      border: none; border-radius: 12px;
+      padding: 11px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .exam-modal-cancel {
+      background: #f0f0f0; color: #666;
+      border: none; border-radius: 12px;
+      padding: 11px 16px; font-size: 14px;
+      cursor: pointer; font-family: inherit;
+    }
+    .exam-modal-delete {
+      background: none; color: #ccc; border: none;
+      font-size: 12px; cursor: pointer; font-family: inherit;
+      text-align: center;
+    }
+    .exam-modal-delete:hover { color: #e74c3c; }
+
+@keyframes pop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.25); }
+      100% { transform: scale(1); }
+    }
+    .cal-day.popping { animation: pop 0.35s ease; }
+
+    /* ══════════════════════════════════
+       모바일 반응형 (640px 이하)
+    ══════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* 사이드 카드 → 하단 바 */
+      .side-col {
+        position: fixed;
+        right: 0; left: 0; bottom: 0; top: auto;
+        transform: none;
+        flex-direction: row;
+        justify-content: center;
+        gap: 20px;
+        padding: 10px 0 env(safe-area-inset-bottom, 12px);
+        background: rgba(245,240,232,0.96);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-top: 1px solid rgba(0,0,0,0.07);
+        z-index: 20;
+      }
+      .side-col .home-card {
+        width: 72px; height: 78px; border-radius: 20px;
+      }
+      .side-col .home-card:hover { transform: translateY(-3px); }
+
+      /* 과목 선택 화면 */
+      #pg-pick {
+        padding-top: 24vh;
+        padding-bottom: 120px;
+        gap: 40px;
+      }
+      .total-time-display { font-size: 38px; letter-spacing: 2px; }
+      #pg-pick > div[style*="position:absolute"] { top: 16px; right: 16px; }
+
+      /* 타이머 화면 */
+      .timer-big { font-size: 54px; letter-spacing: 3px; }
+      .timer-btns { flex-wrap: wrap; gap: 10px; padding: 0 24px; }
+      .timer-ai-btn { flex: 1; min-width: 120px; text-align: center; }
+
+      /* 플래너: 컴퓨터랑 똑같이 축소 */
+      #pg-planner {
+        padding: 56px 0 40px;
+        overflow-y: auto;
+        align-items: center;
+      }
+      .paper {
+        zoom: 0.44;
+        margin: 0 auto;
+      }
+
+      /* 단어 암기 퀴즈 */
+      .quiz-options { grid-template-columns: 1fr; max-width: 320px; }
+
+      /* 달력 */
+      #pg-cal { overflow-y: auto; }
+      .exam-panel { padding: 0 12px 10px; }
+      .exam-btn { font-size: 11px; padding: 7px 10px; }
+      .cal-day { min-height: 44px; }
+      .cal-grid { max-width: 100%; }
+
+      /* 퀴즈 유형 선택 */
+      .quiz-type-btn { max-width: 280px; padding: 14px; font-size: 14px; }
+
+      /* 공통: btn-planner */
+      .btn-planner { font-size: 12px; padding: 7px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ 메인 페이지 ══ -->
+
+<!-- ══ 과목 선택 화면 ══ -->
+<div id="pg-pick" class="page">
+  <div style="position:absolute;top:22px;right:22px;">
+    <button class="btn-planner" onclick="openPlanner()">플래너 열기</button>
+  </div>
+  <div class="total-time-wrap">
+    <div class="total-time-label">총 공부 시간</div>
+    <div class="total-time-display" id="total-time-display">00:00:00</div>
+  </div>
+  <div class="pick-list" id="pick-list"></div>
+  <div class="side-col">
+    <div class="home-card" onclick="openCal('pg-pick')">
+      <div class="card-icon">📅</div>
+      <div class="card-label">달력</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 공부 타이머 화면 ══ -->
+<div id="pg-timer" class="page">
+  <div class="timer-badge" id="timer-badge"></div>
+  <div class="timer-big" id="timer-big">00:00:00</div>
+  <button class="timer-stop" onclick="stopStudy()">⏹</button>
+  <div class="timer-btns">
+    <button class="timer-ai-btn" onclick="openVocab()">단어 암기</button>
+    <button class="timer-ai-btn" onclick="openAI()">📷 문제 풀기</button>
+  </div>
+</div>
+
+<!-- ══ AI 문제 풀기 화면 ══ -->
+<div id="pg-ai" class="page">
+  <div class="ai-header">
+    <button class="ai-back" onclick="show('pg-timer')">←</button>
+    <span class="ai-title">AI 문제 풀기</span>
+    <button class="ai-setting" onclick="openKeyModal()" title="API 키 설정">⚙</button>
+  </div>
+  <div class="ai-body">
+    <div class="ai-upload" id="ai-upload" onclick="document.getElementById('photo-input').click()">
+      <img class="ai-preview" id="ai-preview">
+      <div id="ai-upload-placeholder">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+          <div class="ai-upload-icon">📷</div>
+          <div class="ai-upload-text">사진을 찍거나 파일을 선택하세요</div>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none">
+
+    <button class="ai-solve-btn" id="ai-solve-btn" onclick="solveWithAI()" disabled>AI에게 풀어달라고 하기</button>
+
+    <div class="ai-loading" id="ai-loading">
+      <div class="ai-spinner"></div>
+      <div class="ai-loading-text">풀이를 생성하고 있어요...</div>
+    </div>
+
+    <div class="ai-answer-box" id="ai-answer-box"></div>
+  </div>
+</div>
+
+<!-- API 키 모달 -->
+<div class="key-modal-bg" id="key-modal-bg">
+  <div class="key-modal">
+    <h3>OpenAI API 키 설정</h3>
+    <p>platform.openai.com/api-keys 에서 발급받을 수 있어요.<br>키는 이 기기에만 저장돼요.</p>
+    <input type="password" id="key-input" placeholder="sk-proj-...">
+    <div class="key-modal-btns">
+      <button class="key-cancel" onclick="closeKeyModal()">취소</button>
+      <button class="key-save" onclick="saveKey()">저장</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ 단어장(파일) 선택 화면 ══ -->
+<div id="pg-vocab-sets" class="page">
+  <div class="vocab-header">
+    <button class="vocab-back" onclick="show(vocabFrom)">←</button>
+    <span class="vocab-progress">단어장</span>
+    <button class="vocab-add-btn" onclick="openSetModal()">＋ 새 단어장</button>
+  </div>
+  <div class="vocab-sets-body" id="vocab-sets-list"></div>
+</div>
+
+<!-- 새 단어장 만들기 모달 -->
+<div class="vocab-modal-bg" id="set-modal-bg">
+  <div class="vocab-modal">
+    <h3>새 단어장</h3>
+    <input id="set-name-input" placeholder="단어장 이름 (예: Day 1, 수능 필수)" autocomplete="off">
+    <div class="vocab-modal-btns">
+      <button class="vocab-modal-cancel" onclick="closeSetModal()">취소</button>
+      <button class="vocab-modal-save"   onclick="saveNewSet()">만들기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 단어 암기 화면 ══ -->
+<div id="pg-vocab" class="page">
+  <div class="vocab-header">
+    <button class="vocab-back" onclick="backToVocabSets()">←</button>
+    <span class="vocab-progress" id="vocab-progress"></span>
+    <button class="vocab-add-btn" onclick="openVocabModal()">＋ 단어 추가</button>
+  </div>
+
+  <!-- 학습 단계 -->
+  <div class="study-wrap" id="study-wrap">
+    <div class="study-card" id="study-card" onclick="revealStudyCard()">
+      <div class="study-en" id="study-en"></div>
+      <div class="study-hint" id="study-hint">탭해서 뜻 확인</div>
+      <div class="study-reveal" id="study-reveal">
+        <div class="study-ko" id="study-ko"></div>
+        <div class="study-ex" id="study-ex"></div>
+        <div class="study-syn-row" id="study-syn-row" style="display:none">
+          <span class="study-syn-lbl">동의어</span>
+          <div id="study-syn-chips"></div>
+        </div>
+        <div class="study-syn-row" id="study-ant-row" style="display:none">
+          <span class="study-syn-lbl">반의어</span>
+          <div id="study-ant-chips"></div>
+        </div>
+      </div>
+    </div>
+    <button class="quiz-next" id="study-next" onclick="studyNext()" style="display:none"></button>
+  </div>
+
+  <!-- 퀴즈 유형 선택 -->
+  <div id="quiz-type-select" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:16px;width:100%;padding:24px;">
+    <div style="font-size:15px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:2px;margin-bottom:8px;">어떤 시험 볼까요?</div>
+    <button class="quiz-type-btn" onclick="selectQuizType('all')">전체</button>
+    <button class="quiz-type-btn" onclick="selectQuizType('word')">영어 → 한국어</button>
+    <button class="quiz-type-btn quiz-type-btn-syn" onclick="selectQuizType('syn')">유의어</button>
+    <button class="quiz-type-btn quiz-type-btn-ant" onclick="selectQuizType('ant')">반의어</button>
+    <button class="quiz-type-btn quiz-type-btn-syn" onclick="selectQuizType('synant')">유의어 + 반의어</button>
+  </div>
+
+  <!-- 퀴즈 단계 -->
+  <div class="quiz-word-wrap" id="quiz-word-wrap" style="display:none">
+    <div id="quiz-type-badge" style="display:none;font-size:11px;font-weight:800;letter-spacing:2px;padding:4px 12px;border-radius:20px;margin-bottom:10px;"></div>
+    <div class="quiz-word" id="quiz-word"></div>
+    <div class="quiz-ex"   id="quiz-ex"></div>
+    <div class="quiz-syn-info" id="quiz-syn-info">
+      <div class="quiz-syn-row" id="quiz-syn-row" style="display:none">
+        <span class="quiz-syn-lbl">동의어</span>
+        <div id="quiz-syn-chips"></div>
+      </div>
+      <div class="quiz-syn-row" id="quiz-ant-row" style="display:none">
+        <span class="quiz-syn-lbl">반의어</span>
+        <div id="quiz-ant-chips"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="quiz-score"   id="quiz-score"   style="display:none"></div>
+  <div class="quiz-options" id="quiz-options" style="display:none"></div>
+  <button class="quiz-next" id="quiz-next" onclick="quizNext()" style="display:none">다음 →</button>
+</div>
+
+<!-- 단어 추가 모달 -->
+<div class="vocab-modal-bg" id="vocab-modal-bg">
+  <div class="vocab-modal">
+    <h3>단어 추가</h3>
+    <input id="vi-en" placeholder="English word" autocomplete="off">
+    <input id="vi-ko" placeholder="한국어 뜻" autocomplete="off">
+    <input id="vi-ex" placeholder="예문 (선택)" autocomplete="off">
+    <input id="vi-syn" placeholder="동의어 (쉼표로 구분, 선택)" autocomplete="off">
+    <input id="vi-ant" placeholder="반의어 (쉼표로 구분, 선택)" autocomplete="off">
+    <div class="vocab-modal-btns">
+      <button class="vocab-modal-cancel" onclick="closeVocabModal()">취소</button>
+      <button class="vocab-modal-save"   onclick="saveVocabWord()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 달력 / 출석 화면 ══ -->
+<div id="pg-cal" class="page">
+  <div class="cal-header">
+    <button class="cal-back" onclick="show(calFrom)">←</button>
+    <div style="display:flex;align-items:center;gap:14px">
+      <button class="cal-nav" onclick="moveCal(-1)">‹</button>
+      <span class="cal-title" id="cal-title"></span>
+      <button class="cal-nav" onclick="moveCal(1)">›</button>
+    </div>
+    <button class="btn-planner" onclick="openPlanner()" style="font-size:12px;padding:7px 14px;">플래너</button>
+  </div>
+  <div class="cal-streak" id="cal-streak"></div>
+  <div class="exam-panel">
+    <button class="exam-btn" id="exam-mid-btn"   onclick="openExamModal('mid')">📝 중간고사 기간 설정</button>
+    <button class="exam-btn" id="exam-final-btn" onclick="openExamModal('final')">📝 기말고사 기간 설정</button>
+  </div>
+  <div class="cal-day-names">
+    <div class="cal-dn">일</div><div class="cal-dn">월</div><div class="cal-dn">화</div>
+    <div class="cal-dn">수</div><div class="cal-dn">목</div><div class="cal-dn">금</div>
+    <div class="cal-dn">토</div>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+</div>
+
+<!-- 시험 기간 설정 모달 -->
+<div class="exam-modal-bg" id="exam-modal-bg">
+  <div class="exam-modal">
+    <h3 id="exam-modal-title"></h3>
+    <div>
+      <label>시작일</label>
+      <input type="date" id="exam-start">
+    </div>
+    <div>
+      <label>종료일</label>
+      <input type="date" id="exam-end">
+    </div>
+    <div class="exam-modal-btns">
+      <button class="exam-modal-cancel" onclick="closeExamModal()">취소</button>
+      <button class="exam-modal-save"   onclick="saveExam()">저장</button>
+    </div>
+    <button class="exam-modal-delete" onclick="deleteExam()">기간 삭제</button>
+  </div>
+</div>
+
+<!-- ══ 플래너 오버레이 ══ -->
+<div id="pg-planner" class="page active">
+  <button class="planner-close-btn" onclick="closePlanner()">✕</button>
+
+  <div class="paper">
+    <div class="paper-title">S T U D Y &nbsp; P L A N N E R</div>
+    <div class="tbl">
+
+      <!-- 날짜 + 빈칸 -->
+      <div class="row-date">
+        <div class="cell-date">
+          <span class="lbl">날짜</span>
+          <input id="date-input" type="text">
+        </div>
+        <div class="cell-blank" id="dday-display" style="display:flex;align-items:center;justify-content:center;gap:16px;"></div>
+      </div>
+
+      <!-- 오늘의 목표 -->
+      <div class="row-goal">
+        <div class="lbl">오늘의 목표</div>
+        <div class="goal-wrap">
+          <div class="goal-edit" contenteditable="true"
+               data-placeholder="오늘의 목표를 작성해 보세요..."></div>
+        </div>
+      </div>
+
+      <!-- 메인 -->
+      <div class="row-main">
+
+        <!-- 좌: 과목/계획/체크 -->
+        <div class="task-col">
+          <div class="task-head">
+            <div class="th">과 목</div>
+            <div class="th">계 획</div>
+            <div class="th">페이지</div>
+            <div class="th">목표 시간</div>
+            <div class="th">✓</div>
+          </div>
+          <div class="task-body" id="task-body"></div>
+          <button class="btn-add-row" onclick="addRow()">＋ 항목 추가</button>
+          <div class="task-memo">
+            <div class="lbl">오늘의 메모</div>
+            <div class="memo-edit" contenteditable="true"
+                 data-placeholder="자유롭게 메모하세요..."></div>
+          </div>
+        </div>
+
+        <!-- 우: 공부 시간 체크 표 -->
+        <div class="time-col">
+          <div class="time-head">
+            <div class="tth">시간</div>
+            <div class="tth">00</div>
+            <div class="tth">10</div>
+            <div class="tth">20</div>
+            <div class="tth">30</div>
+            <div class="tth">40</div>
+            <div class="tth">50</div>
+          </div>
+          <div class="time-body" id="time-body"></div>
+        </div>
+
+      </div>
+    </div>
+    <div class="paper-foot">STUDY PLANNER · 2026</div>
+  </div>
+</div>
+
+<script>
+/* ── 화면 전환 ── */
+function show(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function openPlanner() { show('pg-planner'); }
+
+function closePlanner() {
+  openPick();
+}
+
+/* ── 메인: 과목 목록 갱신 ── */
+function refreshMainSubjects() {
+  const el = document.getElementById('main-subjects');
+  const list = tasks.filter(t => t.subject.trim());
+  if (list.length === 0) {
+    el.innerHTML = '<div class="main-empty">플래너에서 과목을 추가해보세요</div>';
+  } else {
+    el.innerHTML = list.map(t =>
+      `<div class="main-subject-item">${esc(t.subject)}</div>`
+    ).join('');
+  }
+}
+
+/* ── 과목 선택 ── */
+function openPick() {
+  updateTotalDisplay();
+  const list = tasks.filter(t => t.subject.trim());
+  const el = document.getElementById('pick-list');
+  if (list.length === 0) {
+    el.innerHTML = '<div class="pick-empty">플래너에서 과목을 추가해보세요</div>';
+  } else {
+    el.innerHTML = list.map(t =>
+      `<button class="pick-subject" onclick="startStudy('${esc(t.subject)}')">${esc(t.subject)}</button>`
+    ).join('');
+  }
+  show('pg-pick');
+}
+
+/* ── 공부 타이머 ── */
+let studyInterval = null;
+let studySec = 0;
+let totalSec = 0;
+let studyStartTime = null;
+let studyColor = '#b8adff';
+
+function fmtTime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${pad(h)}:${pad(m)}:${pad(sec)}`;
+}
+
+function updateTotalDisplay() {
+  const el = document.getElementById('total-time-display');
+  if (el) el.textContent = fmtTime(totalSec);
+}
+
+function startStudy(name) {
+  const task = tasks.find(t => t.subject.trim() === name);
+  studyColor = task ? (task.color || '#b8adff') : '#b8adff';
+  studySec = 0;
+  studyStartTime = new Date();
+  document.getElementById('timer-badge').textContent = name;
+  document.getElementById('timer-big').textContent = '00:00:00';
+  show('pg-timer');
+  clearInterval(studyInterval);
+  studyInterval = setInterval(() => {
+    studySec++;
+    totalSec++;
+    document.getElementById('timer-big').textContent = fmtTime(studySec);
+  }, 1000);
+}
+
+function stopStudy() {
+  clearInterval(studyInterval);
+  studyInterval = null;
+  if (studyStartTime) {
+    markStudiedSlots(studyStartTime, new Date());
+    studyStartTime = null;
+  }
+  studySec = 0;
+  updateTotalDisplay();
+  openPick();
+}
+
+function markStudiedSlots(startTime, endTime) {
+  const SLOT_MS = 10 * 60 * 1000;
+  const cur = new Date(startTime);
+  cur.setMinutes(Math.floor(cur.getMinutes() / 10) * 10, 0, 0);
+
+  while (cur < endTime) {
+    const slotStartMs  = cur.getTime();
+    const slotEndMs    = slotStartMs + SLOT_MS;
+    const overlapStart = Math.max(startTime.getTime(), slotStartMs);
+    const overlapEnd   = Math.min(endTime.getTime(),   slotEndMs);
+
+    if (overlapEnd > overlapStart) {
+      const leftPct  = (overlapStart - slotStartMs) / SLOT_MS * 100;
+      const widthPct = (overlapEnd   - overlapStart) / SLOT_MS * 100;
+      const el = document.getElementById(`slot-${cur.getHours()}-${Math.floor(cur.getMinutes() / 10)}`);
+      if (el) {
+        let fill = el.querySelector('.t-slot-fill');
+        if (!fill) {
+          fill = document.createElement('div');
+          fill.className = 't-slot-fill';
+          fill.style.left  = leftPct + '%';
+          fill.style.width = widthPct + '%';
+          el.appendChild(fill);
+        } else {
+          const existLeft  = parseFloat(fill.style.left)  || 0;
+          const existWidth = parseFloat(fill.style.width) || 0;
+          const newLeft    = Math.min(existLeft, leftPct);
+          const newRight   = Math.max(existLeft + existWidth, leftPct + widthPct);
+          fill.style.left  = newLeft + '%';
+          fill.style.width = (newRight - newLeft) + '%';
+        }
+        fill.style.background = studyColor;
+      }
+    }
+    cur.setTime(cur.getTime() + SLOT_MS);
+  }
+}
+
+/* ── 플래너: 날짜 ── */
+const today = new Date();
+document.getElementById('date-input').value =
+  today.toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+
+/* ── 플래너: 태스크 ── */
+const TASK_COLORS = ['#b8adff','#ffaac2','#88caff','#8ee8a8','#ffd96a','#ffb380','#d4a8ff','#7fe0cc'];
+let tasks = [], seq = 0;
+
+function addRow() {
+  tasks.push({ id: ++seq, subject:'', plan:'', page:'', timeRange:'', color: TASK_COLORS[tasks.length % TASK_COLORS.length], done:false });
+  renderTasks();
+  setTimeout(() => {
+    const rows = document.querySelectorAll('.task-row');
+    const last = rows[rows.length - 1];
+    if (last) last.querySelector('input').focus();
+  }, 0);
+}
+
+function toggleCheck(id) {
+  const t = tasks.find(x => x.id === id);
+  if (t) { t.done = !t.done; renderTasks(); }
+}
+
+function renderTasks() {
+  document.getElementById('task-body').innerHTML = tasks.map(t => `
+    <div class="task-row">
+      <div class="tc" style="gap:5px;">
+        <input type="color" value="${t.color}"
+          style="width:14px;height:14px;border:none;border-radius:3px;padding:0;cursor:pointer;flex-shrink:0;background:none;visibility:${t.subject.trim()?'visible':'hidden'};"
+          oninput="tasks.find(x=>x.id===${t.id}).color=this.value;updatePlanHighlights()">
+        <input type="text" value="${esc(t.subject)}"
+          oninput="tasks.find(x=>x.id===${t.id}).subject=this.value;this.previousElementSibling.style.visibility=this.value.trim()?'visible':'hidden';">
+      </div>
+      <div class="tc">
+        <input type="text" value="${esc(t.plan)}"
+          class="${t.done ? 'struck' : ''}"
+          oninput="tasks.find(x=>x.id===${t.id}).plan=this.value">
+      </div>
+      <div class="tc" style="gap:3px;">
+        <span style="font-size:11px;font-weight:800;color:#333;flex-shrink:0;">p.</span>
+        <input type="text" value="${esc(t.page||'')}"
+          style="font-size:11px;color:#222;font-weight:600;flex:1;min-width:0;"
+          oninput="tasks.find(x=>x.id===${t.id}).page=this.value">
+      </div>
+      <div class="tc">
+        <input type="text" value="${esc(t.timeRange||'')}" placeholder="9~11시"
+          style="font-size:10px;color:#222;font-weight:600;"
+          oninput="tasks.find(x=>x.id===${t.id}).timeRange=this.value;updatePlanHighlights()">
+      </div>
+      <div class="tc center">
+        <div class="chk${t.done ? ' done' : ''}" onclick="toggleCheck(${t.id})">${t.done ? '✓' : ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+for (let i = 0; i < 12; i++) tasks.push({ id: ++seq, subject:'', plan:'', page:'', timeRange:'', color: TASK_COLORS[i % TASK_COLORS.length], done:false });
+renderTasks();
+
+/* ── 목표 시간 하이라이트 ── */
+function parseTimeRange(str) {
+  if (!str || !str.includes('~')) return null;
+  const parts = str.split('~');
+  if (parts.length !== 2) return null;
+  const parseT = s => {
+    s = s.trim().replace(/[^0-9:]/g, '');
+    if (!s) return null;
+    if (s.includes(':')) {
+      const [h, m] = s.split(':').map(Number);
+      return isNaN(h) ? null : { h, m: isNaN(m) ? 0 : m };
+    }
+    const h = Number(s);
+    return isNaN(h) ? null : { h, m: 0 };
+  };
+  const start = parseT(parts[0]);
+  const end   = parseT(parts[1]);
+  if (!start || !end) return null;
+  return { start, end };
+}
+
+function updatePlanHighlights() {
+  document.querySelectorAll('.t-slot-plan').forEach(el => el.remove());
+  const HOURS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5];
+  tasks.forEach(t => {
+    const r = parseTimeRange(t.timeRange || '');
+    if (!r) return;
+    const sMins = r.start.h * 60 + r.start.m;
+    const eMins = r.end.h   * 60 + r.end.m;
+    HOURS.forEach(h => {
+      for (let i = 0; i < 6; i++) {
+        const slotMins = h * 60 + i * 10;
+        const inRange = eMins > sMins
+          ? slotMins >= sMins && slotMins < eMins
+          : slotMins >= sMins || slotMins < eMins;
+        if (inRange) {
+          const el = document.getElementById(`slot-${h}-${i}`);
+          if (el) {
+            let plan = el.querySelector('.t-slot-plan');
+            if (!plan) {
+              plan = document.createElement('div');
+              plan.className = 't-slot-plan';
+              el.insertBefore(plan, el.firstChild);
+            }
+            const hex = t.color || '#ffd96a';
+            const rr = parseInt(hex.slice(1,3),16), gg = parseInt(hex.slice(3,5),16), bb = parseInt(hex.slice(5,7),16);
+            plan.style.background = `rgba(${rr},${gg},${bb},0.22)`;
+          }
+        }
+      }
+    });
+  });
+}
+
+/* ── 플래너: 시간 표 ── */
+const HOURS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5];
+document.getElementById('time-body').innerHTML = HOURS.map(h => `
+  <div class="time-row">
+    <div class="t-label">${h}시</div>
+    ${[0,1,2,3,4,5].map(i => `<div class="t-slot" id="slot-${h}-${i}"></div>`).join('')}
+  </div>
+`).join('');
+
+/* ── AI 문제 풀기 ── */
+let photoBase64 = null;
+let photoMime = 'image/jpeg';
+
+function openAI() {
+  // 사진·답변 초기화
+  photoBase64 = null;
+  document.getElementById('ai-preview').style.display = 'none';
+  document.getElementById('ai-upload-placeholder').style.display = 'flex';
+  document.getElementById('ai-solve-btn').disabled = true;
+  document.getElementById('ai-answer-box').style.display = 'none';
+  document.getElementById('ai-answer-box').textContent = '';
+  document.getElementById('ai-loading').style.display = 'none';
+  show('pg-ai');
+}
+
+document.getElementById('photo-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  photoMime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const dataUrl = ev.target.result;
+    photoBase64 = dataUrl.split(',')[1];
+    const preview = document.getElementById('ai-preview');
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    document.getElementById('ai-upload-placeholder').style.display = 'none';
+    document.getElementById('ai-solve-btn').disabled = false;
+    document.getElementById('ai-answer-box').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+  this.value = '';
+});
+
+async function solveWithAI() {
+  const key = (localStorage.getItem('openai_api_key') || '').replace(/[^\x20-\x7E]/g, '').trim();
+  if (!key) { openKeyModal(); return; }
+  if (!photoBase64) return;
+
+  const solveBtn  = document.getElementById('ai-solve-btn');
+  const loading   = document.getElementById('ai-loading');
+  const answerBox = document.getElementById('ai-answer-box');
+
+  solveBtn.disabled = true;
+  loading.style.display = 'flex';
+  answerBox.style.display = 'none';
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: 'o1',
+        max_completion_tokens: 8000,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: `data:${photoMime};base64,${photoBase64}` } },
+              { type: 'text', text: `너는 수학 전문 과외 선생님이야. 이미지 속 문제를 반드시 풀어야 해.
+
+풀이 순서:
+1. 이미지에서 문제를 정확히 읽고 그대로 옮겨 써줘.
+2. 풀이 과정을 단계별로 빠짐없이 써줘. 계산 실수 없이 꼼꼼하게.
+3. 각 단계마다 왜 그렇게 하는지 이유를 설명해줘.
+4. 풀이가 끝나면 반드시 검산(대입해서 확인)을 해줘.
+5. 마지막 줄에 "✅ 최종 답: (실제 값)" 형식으로 명확하게 답을 써줘.
+
+한국어로 답해줘.` }
+            ]
+          }
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `오류 ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = data.choices[0].message.content;
+    answerBox.textContent = text;
+    answerBox.style.display = 'block';
+    if (window.katexReady && window.renderMathInElement) {
+      renderMathInElement(answerBox, {
+        delimiters: [
+          { left: '$$',  right: '$$',  display: true  },
+          { left: '$',   right: '$',   display: false },
+          { left: '\\[', right: '\\]', display: true  },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+  } catch (err) {
+    answerBox.textContent = '오류가 발생했어요: ' + err.message;
+    answerBox.style.display = 'block';
+  } finally {
+    loading.style.display = 'none';
+    solveBtn.disabled = false;
+  }
+}
+
+/* API 키 모달 */
+function openKeyModal() {
+  const saved = localStorage.getItem('openai_api_key') || '';
+  document.getElementById('key-input').value = saved;
+  document.getElementById('key-modal-bg').classList.add('open');
+}
+function closeKeyModal() {
+  document.getElementById('key-modal-bg').classList.remove('open');
+}
+function saveKey() {
+  const val = document.getElementById('key-input').value.replace(/[^\x20-\x7E]/g, '').trim();
+  if (val) localStorage.setItem('openai_api_key', val);
+  closeKeyModal();
+}
+
+/* ── 단어 암기 (단어장 + 4지선다 퀴즈) ── */
+let vocabSets = JSON.parse(localStorage.getItem('vocab_sets') || 'null');
+if (!vocabSets) {
+  const legacyWords = JSON.parse(localStorage.getItem('vocab_list') || '[]');
+  vocabSets = legacyWords.length ? [{ id: 'default', name: '기본 단어장', words: legacyWords }] : [];
+  localStorage.setItem('vocab_sets', JSON.stringify(vocabSets));
+}
+let currentSetId = vocabSets.length ? vocabSets[0].id : null;
+let vocabList = currentSetId ? vocabSets.find(s => s.id === currentSetId).words : [];
+let quizQueue    = [];
+let quizIdx      = 0;
+let quizCorrect  = 0;
+let quizWrong    = 0;
+let quizAnswered = false;
+let quizCorrectKo = '';
+let vocabFrom = 'pg-timer';
+
+function saveVocabSets() {
+  localStorage.setItem('vocab_sets', JSON.stringify(vocabSets));
+}
+
+function openVocab() {
+  vocabFrom = 'pg-timer';
+  showVocabSets();
+}
+
+function openVocabFrom(from) {
+  vocabFrom = from || 'pg-pick';
+  showVocabSets();
+}
+
+function showVocabSets() {
+  renderVocabSetsList();
+  show('pg-vocab-sets');
+}
+
+function backToVocabSets() {
+  showVocabSets();
+}
+
+function renderVocabSetsList() {
+  const el = document.getElementById('vocab-sets-list');
+  if (vocabSets.length === 0) {
+    el.innerHTML = '<div class="vocab-sets-empty">단어장을 만들어보세요</div>';
+    return;
+  }
+  el.innerHTML = vocabSets.map(s => `
+    <div class="vocab-set-card" onclick="enterVocabSet('${s.id}')">
+      <div>
+        <div class="vocab-set-name">${esc(s.name)}</div>
+        <div class="vocab-set-count">${s.words.length}개 단어</div>
+      </div>
+      <button class="vocab-set-del" onclick="event.stopPropagation(); deleteVocabSet('${s.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function enterVocabSet(id) {
+  currentSetId = id;
+  vocabList = vocabSets.find(s => s.id === id).words;
+  startStudyPhase();
+  show('pg-vocab');
+}
+
+function deleteVocabSet(id) {
+  if (!confirm('이 단어장을 삭제할까요? 안에 있는 단어도 함께 삭제됩니다.')) return;
+  vocabSets = vocabSets.filter(s => s.id !== id);
+  saveVocabSets();
+  renderVocabSetsList();
+}
+
+function openSetModal() {
+  document.getElementById('set-name-input').value = '';
+  document.getElementById('set-modal-bg').classList.add('open');
+  setTimeout(() => document.getElementById('set-name-input').focus(), 100);
+}
+function closeSetModal() {
+  document.getElementById('set-modal-bg').classList.remove('open');
+}
+function saveNewSet() {
+  const name = document.getElementById('set-name-input').value.trim();
+  if (!name) return;
+  const id = 'set_' + Date.now();
+  vocabSets.push({ id, name, words: [] });
+  saveVocabSets();
+  closeSetModal();
+  renderVocabSetsList();
+}
+
+/* ── 학습 단계 ── */
+let studyQueue    = [];
+let studyIdx      = 0;
+let studyRevealed = false;
+
+function startStudyPhase() {
+  studyQueue = [...Array(vocabList.length).keys()].sort(() => Math.random() - 0.5);
+  studyIdx = 0;
+  document.getElementById('study-wrap').style.display     = 'flex';
+  document.getElementById('quiz-word-wrap').style.display = 'none';
+  document.getElementById('quiz-score').style.display     = 'none';
+  document.getElementById('quiz-options').style.display   = 'none';
+  document.getElementById('quiz-next').style.display      = 'none';
+  showStudyCard();
+}
+
+function showStudyCard() {
+  studyRevealed = false;
+  document.getElementById('study-reveal').style.display = 'none';
+  document.getElementById('study-hint').style.display   = 'block';
+  document.getElementById('study-next').style.display   = 'none';
+  document.getElementById('vocab-progress').textContent  = `학습 ${studyIdx + 1} / ${studyQueue.length}`;
+
+  if (vocabList.length === 0) {
+    document.getElementById('study-en').textContent = '단어를 추가해보세요';
+    return;
+  }
+  const w = vocabList[studyQueue[studyIdx]];
+  document.getElementById('study-en').textContent = w.en;
+  document.getElementById('study-ko').textContent = w.ko;
+  document.getElementById('study-ex').textContent = w.ex || '';
+
+  const synRow = document.getElementById('study-syn-row');
+  const antRow = document.getElementById('study-ant-row');
+  if (w.syn) {
+    synRow.style.display = 'flex';
+    document.getElementById('study-syn-chips').innerHTML =
+      w.syn.split(',').map(s => `<span class="quiz-chip">${s.trim()}</span>`).join('');
+  } else { synRow.style.display = 'none'; }
+  if (w.ant) {
+    antRow.style.display = 'flex';
+    document.getElementById('study-ant-chips').innerHTML =
+      w.ant.split(',').map(s => `<span class="quiz-chip ant">${s.trim()}</span>`).join('');
+  } else { antRow.style.display = 'none'; }
+}
+
+function revealStudyCard() {
+  if (studyRevealed) return;
+  studyRevealed = true;
+  document.getElementById('study-reveal').style.display = 'flex';
+  document.getElementById('study-hint').style.display   = 'none';
+  const isLast = studyIdx >= studyQueue.length - 1;
+  const btn = document.getElementById('study-next');
+  btn.textContent    = isLast ? '퀴즈 시작 →' : '다음 →';
+  btn.style.display  = 'block';
+}
+
+function studyNext() {
+  studyIdx++;
+  if (studyIdx >= studyQueue.length) {
+    document.getElementById('study-wrap').style.display          = 'none';
+    document.getElementById('quiz-type-select').style.display    = 'flex';
+    document.getElementById('quiz-word-wrap').style.display      = 'none';
+    document.getElementById('quiz-score').style.display          = 'none';
+    document.getElementById('quiz-options').style.display        = 'none';
+    document.getElementById('quiz-next').style.display           = 'none';
+    return;
+  }
+  showStudyCard();
+}
+
+let quizTypeFilter = 'all';
+
+function selectQuizType(type) {
+  quizTypeFilter = type;
+  document.getElementById('quiz-type-select').style.display    = 'none';
+  document.getElementById('quiz-word-wrap').style.display      = 'flex';
+  document.getElementById('quiz-score').style.display          = 'block';
+  document.getElementById('quiz-options').style.display        = 'grid';
+  startQuiz();
+}
+
+function buildQuizItems() {
+  const items = [];
+  const f = quizTypeFilter;
+  if (f === 'all' || f === 'word')
+    vocabList.forEach((w, i) => items.push({ type: 'word', idx: i, answer: w.ko }));
+  if (f === 'all' || f === 'syn' || f === 'synant')
+    vocabList.forEach((w, i) => {
+      if (!w.syn) return;
+      w.syn.split(',').map(s => s.trim()).filter(Boolean)
+        .forEach(s => items.push({ type: 'syn', idx: i, answer: s }));
+    });
+  if (f === 'all' || f === 'ant' || f === 'synant')
+    vocabList.forEach((w, i) => {
+      if (!w.ant) return;
+      w.ant.split(',').map(s => s.trim()).filter(Boolean)
+        .forEach(a => items.push({ type: 'ant', idx: i, answer: a }));
+    });
+  return items.sort(() => Math.random() - 0.5);
+}
+
+function startQuiz() {
+  quizQueue   = buildQuizItems();
+  quizIdx     = 0;
+  quizCorrect = 0;
+  quizWrong   = 0;
+  showQuizCard();
+}
+
+function showQuizCard() {
+  if (vocabList.length === 0 || quizQueue.length === 0) {
+    document.getElementById('quiz-word').textContent     = '단어를 추가해보세요';
+    document.getElementById('quiz-ex').textContent       = '';
+    document.getElementById('quiz-options').innerHTML    = '';
+    document.getElementById('quiz-score').textContent    = '';
+    document.getElementById('quiz-next').style.display   = 'none';
+    document.getElementById('vocab-progress').textContent = '0 / 0';
+    document.getElementById('quiz-syn-info').classList.remove('visible');
+    document.getElementById('quiz-type-badge').style.display = 'none';
+    return;
+  }
+
+  quizAnswered = false;
+  const item = quizQueue[quizIdx];
+  const word = vocabList[item.idx];
+  const badge = document.getElementById('quiz-type-badge');
+
+  document.getElementById('quiz-word').textContent     = word.en;
+  document.getElementById('vocab-progress').textContent = `${quizIdx + 1} / ${quizQueue.length}`;
+  document.getElementById('quiz-score').textContent    = quizIdx > 0 ? `✓ ${quizCorrect}   ✗ ${quizWrong}` : '';
+  document.getElementById('quiz-next').style.display   = 'none';
+  document.getElementById('quiz-syn-info').classList.remove('visible');
+
+  let opts;
+  if (item.type === 'word') {
+    badge.style.display = 'none';
+    document.getElementById('quiz-ex').textContent = word.ex || '';
+    const wrongs = vocabList.filter((_, i) => i !== item.idx)
+      .sort(() => Math.random() - 0.5).slice(0, 3).map(w => w.ko);
+    opts = [...wrongs, word.ko].sort(() => Math.random() - 0.5);
+  } else {
+    // 유의어 / 반의어 문제
+    const isSyn = item.type === 'syn';
+    badge.style.display = 'inline-block';
+    badge.textContent   = isSyn ? '유의어' : '반의어';
+    badge.style.background = isSyn ? 'rgba(108,95,255,0.25)' : 'rgba(231,76,60,0.2)';
+    badge.style.color      = isSyn ? '#c4bdff' : '#ffaaaa';
+    document.getElementById('quiz-ex').textContent = isSyn ? '위 단어의 유의어를 고르세요' : '위 단어의 반의어를 고르세요';
+
+    // 오답 풀: 다른 단어들의 유의어·반의어·영단어 전체에서 고르기
+    const ownWords = new Set([
+      word.en,
+      ...(word.syn ? word.syn.split(',').map(s => s.trim()).filter(Boolean) : []),
+      ...(word.ant ? word.ant.split(',').map(s => s.trim()).filter(Boolean) : [])
+    ]);
+    const pool = [...new Set([
+      ...vocabList.filter((_, i) => i !== item.idx).map(w => w.en),
+      ...vocabList.flatMap(w => w.syn ? w.syn.split(',').map(s => s.trim()).filter(Boolean) : []),
+      ...vocabList.flatMap(w => w.ant ? w.ant.split(',').map(s => s.trim()).filter(Boolean) : [])
+    ])].filter(w => !ownWords.has(w));
+    const wrongs = pool.sort(() => Math.random() - 0.5).slice(0, 3);
+    opts = [...wrongs, item.answer].sort(() => Math.random() - 0.5);
+  }
+
+  document.getElementById('quiz-options').innerHTML = opts.map(opt =>
+    `<button class="quiz-opt" data-opt="${esc(opt)}" onclick="selectAnswer(this)">${esc(opt)}</button>`
+  ).join('');
+}
+
+function selectAnswer(btn) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+
+  const item    = quizQueue[quizIdx];
+  const correct = item.answer;
+  const selected = btn.dataset.opt;
+
+  document.querySelectorAll('.quiz-opt').forEach(b => {
+    b.disabled = true;
+    if (b.dataset.opt === correct) b.classList.add('correct');
+  });
+
+  if (selected === correct) {
+    quizCorrect++;
+  } else {
+    btn.classList.add('wrong');
+    quizWrong++;
+    quizQueue.push({ ...item });
+  }
+  document.getElementById('quiz-score').textContent = `✓ ${quizCorrect}   ✗ ${quizWrong}`;
+
+  // 정답 후 동의어·반의어 참고 표시
+  const w = vocabList[item.idx];
+  const synRow = document.getElementById('quiz-syn-row');
+  const antRow = document.getElementById('quiz-ant-row');
+  let hasSynAnt = false;
+  if (w.syn) {
+    synRow.style.display = 'flex';
+    document.getElementById('quiz-syn-chips').innerHTML =
+      w.syn.split(',').map(s => s.trim()).filter(Boolean).map(s => `<span class="quiz-chip">${s}</span>`).join('');
+    hasSynAnt = true;
+  } else { synRow.style.display = 'none'; }
+  if (w.ant) {
+    antRow.style.display = 'flex';
+    document.getElementById('quiz-ant-chips').innerHTML =
+      w.ant.split(',').map(s => s.trim()).filter(Boolean).map(s => `<span class="quiz-chip ant">${s}</span>`).join('');
+    hasSynAnt = true;
+  } else { antRow.style.display = 'none'; }
+  if (hasSynAnt) document.getElementById('quiz-syn-info').classList.add('visible');
+
+  document.getElementById('quiz-next').style.display = 'block';
+}
+
+function quizNext() {
+  quizIdx++;
+  if (quizIdx >= quizQueue.length) {
+    document.getElementById('quiz-word-wrap').style.display   = 'none';
+    document.getElementById('quiz-score').style.display       = 'none';
+    document.getElementById('quiz-options').style.display     = 'none';
+    document.getElementById('quiz-next').style.display        = 'none';
+    document.getElementById('quiz-type-select').style.display = 'flex';
+    return;
+  }
+  showQuizCard();
+}
+
+function openVocabModal() {
+  document.getElementById('vi-en').value  = '';
+  document.getElementById('vi-ko').value  = '';
+  document.getElementById('vi-ex').value  = '';
+  document.getElementById('vi-syn').value = '';
+  document.getElementById('vi-ant').value = '';
+  document.getElementById('vocab-modal-bg').classList.add('open');
+  setTimeout(() => document.getElementById('vi-en').focus(), 100);
+}
+function closeVocabModal() {
+  document.getElementById('vocab-modal-bg').classList.remove('open');
+}
+function saveVocabWord() {
+  const en  = document.getElementById('vi-en').value.trim();
+  const ko  = document.getElementById('vi-ko').value.trim();
+  const ex  = document.getElementById('vi-ex').value.trim();
+  const syn = document.getElementById('vi-syn').value.trim();
+  const ant = document.getElementById('vi-ant').value.trim();
+  if (!en || !ko) return;
+  vocabList.push({ en, ko, ex, syn, ant });
+  saveVocabSets();
+  closeVocabModal();
+}
+
+/* ── 달력 / 출석 ── */
+const REWARDS = ['⭐','🍎','💎','🎯','🏆','🌟','🎁','🔥','💫','🎵','🌈','🦋','🍀','✨','🎊','💡','🎮','🏅','🌙','🌸','🍭','🦄','🎨','💰','🌺','🎸','🍕','🎃','🎄','🎇','🎆'];
+let calYear = today.getFullYear();
+let calMonth = today.getMonth();
+let calFrom  = 'pg-pick';
+let attendance = JSON.parse(localStorage.getItem('attendance') || '{}');
+
+/* 출석 데이터 초기화 (1회) */
+if (!localStorage.getItem('attendance_reset_v2')) {
+  attendance = {};
+  localStorage.setItem('attendance', JSON.stringify({}));
+  localStorage.setItem('attendance_reset_v2', '1');
+}
+
+function openCal(from) {
+  calFrom  = from || 'pg-pick';
+  calYear  = today.getFullYear();
+  calMonth = today.getMonth();
+  renderCal();
+  show('pg-cal');
+}
+
+function moveCal(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  renderCal();
+}
+
+function renderCal() {
+  const MN = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('cal-title').textContent = `${calYear}년 ${MN[calMonth]}`;
+
+  // 연속 출석 계산
+  let streak = 0;
+  const d = new Date(today);
+  while (true) {
+    const k = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+    if (!attendance[k]) break;
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  const streakEl = document.getElementById('cal-streak');
+  streakEl.innerHTML = streak > 0
+    ? `연속 출석 <span>${streak}일 🔥</span>`
+    : '오늘 출석 도장을 눌러보세요!';
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  let html = '';
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${calYear}-${calMonth+1}-${day}`;
+    const cellDate = new Date(calYear, calMonth, day);
+    const isToday = cellDate.getTime() === todayMidnight.getTime();
+    const isDone  = !!attendance[key];
+    const isFuture = cellDate > todayMidnight;
+    const reward = REWARDS[(day - 1) % REWARDS.length];
+
+    const dateStr  = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const inMid    = isInExam(dateStr, 'mid');
+    const inFinal  = isInExam(dateStr, 'final');
+    const holiday  = HOLIDAYS[dateStr] || null;
+    const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
+
+    let cls = 'cal-day';
+    if (isToday)  cls += ' cal-today';
+    if (isDone)   cls += ' cal-done';
+    if (isFuture) cls += ' future';
+    if (!isDone && !isToday && inMid)   cls += ' exam-mid';
+    if (!isDone && !isToday && inFinal) cls += ' exam-final';
+    if (holiday && !isDone && !isToday) cls += ' holiday';
+
+    const onclick = (isToday && !isDone) ? `onclick="doAttend('${key}', this)"` : '';
+    const showBadge = !isWeekend && !holiday;
+    const bottom = isDone
+      ? '<div class="cal-done-mark">✓</div>'
+      : holiday  ? `<div class="cal-holiday-name">${holiday}</div>`
+      : (inMid   && showBadge) ? '<div class="cal-exam-badge">중간</div>'
+      : (inFinal && showBadge) ? '<div class="cal-exam-badge">기말</div>'
+      : '';
+    html += `
+      <div class="${cls}" ${onclick}>
+        <div class="cal-day-num">${day}</div>
+        <div class="cal-reward-icon">${reward}</div>
+        ${bottom}
+      </div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function doAttend(key, el) {
+  attendance[key] = true;
+  localStorage.setItem('attendance', JSON.stringify(attendance));
+  el.classList.add('cal-done', 'popping');
+  el.onclick = null;
+  const mark = document.createElement('div');
+  mark.className = 'cal-done-mark';
+  mark.textContent = '✓';
+  el.appendChild(mark);
+  el.querySelector('.cal-reward-icon').style.filter = 'none';
+  setTimeout(() => renderCal(), 400);
+}
+
+/* 오늘 출석 가능한지 체크 */
+function isTodayAttended() {
+  const k = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+  return !!attendance[k];
+}
+
+/* ── 공휴일 ── */
+const HOLIDAYS = {
+  '2025-01-01':'신정','2025-01-28':'설날 전날','2025-01-29':'설날','2025-01-30':'설날 다음날',
+  '2025-03-01':'삼일절','2025-05-05':'어린이날','2025-05-06':'대체공휴일',
+  '2025-06-06':'현충일','2025-08-15':'광복절',
+  '2025-10-02':'대체공휴일','2025-10-03':'개천절','2025-10-05':'추석 전날',
+  '2025-10-06':'추석','2025-10-07':'추석 다음날','2025-10-08':'대체공휴일',
+  '2025-10-09':'한글날','2025-12-25':'성탄절',
+  '2026-01-01':'신정','2026-02-16':'설날 전날','2026-02-17':'설날','2026-02-18':'설날 다음날',
+  '2026-03-01':'삼일절','2026-03-02':'대체공휴일',
+  '2026-05-05':'어린이날','2026-05-24':'부처님오신날','2026-05-25':'대체공휴일',
+  '2026-06-06':'현충일','2026-06-08':'대체공휴일',
+  '2026-08-15':'광복절','2026-08-17':'대체공휴일',
+  '2026-09-24':'추석 전날','2026-09-25':'추석','2026-09-26':'추석 다음날','2026-09-28':'대체공휴일',
+  '2026-10-03':'개천절','2026-10-05':'대체공휴일','2026-10-09':'한글날','2026-12-25':'성탄절',
+  '2027-01-01':'신정','2027-02-06':'설날 전날','2027-02-07':'설날','2027-02-08':'설날 다음날','2027-02-09':'대체공휴일','2027-02-10':'대체공휴일',
+  '2027-03-01':'삼일절','2027-05-05':'어린이날','2027-05-13':'부처님오신날',
+  '2027-06-06':'현충일','2027-06-07':'대체공휴일',
+  '2027-08-15':'광복절','2027-08-16':'대체공휴일',
+  '2027-10-03':'개천절','2027-10-04':'대체공휴일','2027-10-09':'한글날','2027-10-11':'대체공휴일','2027-10-14':'추석 전날',
+  '2027-10-15':'추석','2027-10-16':'추석 다음날','2027-10-18':'대체공휴일','2027-12-25':'성탄절','2027-12-27':'대체공휴일',
+};
+
+/* ── 시험 기간 ── */
+let exams = JSON.parse(localStorage.getItem('exam_periods') || '{"mid":null,"final":null}');
+let currentExamType = null;
+
+function openExamModal(type) {
+  currentExamType = type;
+  document.getElementById('exam-modal-title').textContent = type === 'mid' ? '중간고사 기간' : '기말고사 기간';
+  const saved = exams[type];
+  document.getElementById('exam-start').value = saved ? saved.start : '';
+  document.getElementById('exam-end').value   = saved ? saved.end   : '';
+  document.getElementById('exam-modal-bg').classList.add('open');
+}
+function closeExamModal() {
+  document.getElementById('exam-modal-bg').classList.remove('open');
+}
+function saveExam() {
+  const start = document.getElementById('exam-start').value;
+  const end   = document.getElementById('exam-end').value;
+  if (!start || !end) return;
+  exams[currentExamType] = { start, end };
+  localStorage.setItem('exam_periods', JSON.stringify(exams));
+  updateExamBtns();
+  updateDDay();
+  closeExamModal();
+  renderCal();
+}
+function deleteExam() {
+  exams[currentExamType] = null;
+  localStorage.setItem('exam_periods', JSON.stringify(exams));
+  updateExamBtns();
+  updateDDay();
+  closeExamModal();
+  renderCal();
+}
+function updateExamBtns() {
+  const mb = document.getElementById('exam-mid-btn');
+  const fb = document.getElementById('exam-final-btn');
+  if (exams.mid)   { mb.textContent = `📝 중간고사 ${exams.mid.start} ~ ${exams.mid.end}`;     mb.className = 'exam-btn set-mid'; }
+  else             { mb.textContent = '📝 중간고사 기간 설정';  mb.className = 'exam-btn'; }
+  if (exams.final) { fb.textContent = `📝 기말고사 ${exams.final.start} ~ ${exams.final.end}`; fb.className = 'exam-btn set-final'; }
+  else             { fb.textContent = '📝 기말고사 기간 설정';  fb.className = 'exam-btn'; }
+}
+function isInExam(dateStr, type) {
+  const e = exams[type];
+  if (!e) return false;
+  return dateStr >= e.start && dateStr <= e.end;
+}
+updateExamBtns();
+
+function updateDDay() {
+  const el = document.getElementById('dday-display');
+  if (!el) return;
+  const todayDate = new Date(today.toISOString().slice(0, 10) + 'T00:00:00');
+  let best = null;
+  ['mid', 'final'].forEach(type => {
+    const e = exams[type];
+    if (!e) return;
+    const startDate = new Date(e.start + 'T00:00:00');
+    const endDate   = new Date(e.end   + 'T00:00:00');
+    if (endDate < todayDate) return; // 끝난 시험 제외
+    const diffStart = Math.round((startDate - todayDate) / 86400000);
+    const absDiff = diffStart > 0 ? diffStart : 0; // 진행 중이면 0으로 취급
+    if (best === null || absDiff < best.absDiff) {
+      best = { type, diffStart, absDiff };
+    }
+  });
+  if (!best) { el.innerHTML = ''; return; }
+  const label = best.type === 'mid' ? '중간' : '기말';
+  const color = best.type === 'mid' ? '#e07b5a' : '#5a7be0';
+  const text  = best.diffStart <= 0 ? `${label} D-Day` : `${label} D-${best.diffStart}`;
+  el.innerHTML = `<span style="font-size:13px;font-weight:700;color:${color}">${text}</span>`;
+}
+updateDDay();
+
+
+/* ── 유틸 ── */
+function pad(n) { return String(n).padStart(2, '0'); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
