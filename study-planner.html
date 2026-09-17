@@ -1416,6 +1416,24 @@ function debounce(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+let syncErrorTimer = null;
+function showSyncError(msg) {
+  console.error(msg);
+  let el = document.getElementById('sync-error-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sync-error-toast';
+    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);' +
+      'background:#e74c3c;color:white;padding:10px 18px;border-radius:12px;' +
+      'font-size:13px;z-index:5000;box-shadow:0 6px 20px rgba(0,0,0,0.3);max-width:90vw;text-align:center;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(syncErrorTimer);
+  syncErrorTimer = setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
 async function doSignIn() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
@@ -1602,7 +1620,7 @@ function markStudiedSlots(startTime, endTime, color) {
 
 async function savePlannerStateNow() {
   if (!currentUser) return;
-  await sb.from('planner_state').upsert({
+  const { error } = await sb.from('planner_state').upsert({
     user_id: currentUser.id,
     date_input: document.getElementById('date-input').value,
     goal: document.querySelector('.goal-edit').textContent,
@@ -1612,6 +1630,7 @@ async function savePlannerStateNow() {
     total_sec: totalSec,
     updated_at: new Date().toISOString()
   });
+  if (error) showSyncError('플래너 저장 실패: ' + error.message);
 }
 const savePlannerState = debounce(savePlannerStateNow, 800);
 
@@ -1880,9 +1899,10 @@ let vocabFrom = 'pg-timer';
 
 async function saveVocabSets() {
   if (!currentUser || !vocabSets.length) return;
-  await sb.from('vocab_sets').upsert(
+  const { error } = await sb.from('vocab_sets').upsert(
     vocabSets.map(s => ({ id: s.id, user_id: currentUser.id, name: s.name, words: s.words, updated_at: new Date().toISOString() }))
   );
+  if (error) showSyncError('단어장 저장 실패: ' + error.message);
 }
 
 function openVocab() {
@@ -2293,7 +2313,10 @@ function renderCal() {
 
 async function doAttend(key, el) {
   attendance[key] = true;
-  if (currentUser) await sb.from('attendance').upsert({ user_id: currentUser.id, date_key: key, done: true });
+  if (currentUser) {
+    const { error } = await sb.from('attendance').upsert({ user_id: currentUser.id, date_key: key, done: true });
+    if (error) showSyncError('출석 저장 실패: ' + error.message);
+  }
   el.classList.add('cal-done', 'popping');
   el.onclick = null;
   const mark = document.createElement('div');
@@ -2339,7 +2362,8 @@ let currentExamType = null;
 
 async function saveExamsToDb() {
   if (!currentUser) return;
-  await sb.from('exam_periods').upsert({ user_id: currentUser.id, mid: exams.mid, final: exams.final });
+  const { error } = await sb.from('exam_periods').upsert({ user_id: currentUser.id, mid: exams.mid, final: exams.final });
+  if (error) showSyncError('시험 기간 저장 실패: ' + error.message);
 }
 
 function openExamModal(type) {
@@ -2425,13 +2449,15 @@ async function loadAllData() {
   const uid = currentUser.id;
 
   // 단어장
-  const { data: vsRows } = await sb.from('vocab_sets').select('*').order('updated_at');
+  const { data: vsRows, error: vsErr } = await sb.from('vocab_sets').select('*').order('updated_at');
+  if (vsErr) showSyncError('단어장 불러오기 실패: ' + vsErr.message);
   vocabSets = (vsRows || []).map(r => ({ id: r.id, name: r.name, words: r.words || [] }));
   currentSetId = vocabSets.length ? vocabSets[0].id : null;
   vocabList = currentSetId ? vocabSets.find(s => s.id === currentSetId).words : [];
 
   // 플래너 (오늘의 목표/메모/과목계획/공부 세션)
-  const { data: psRow } = await sb.from('planner_state').select('*').eq('user_id', uid).maybeSingle();
+  const { data: psRow, error: psErr } = await sb.from('planner_state').select('*').eq('user_id', uid).maybeSingle();
+  if (psErr) showSyncError('플래너 불러오기 실패: ' + psErr.message);
   if (psRow) {
     if (psRow.date_input) document.getElementById('date-input').value = psRow.date_input;
     document.querySelector('.goal-edit').textContent = psRow.goal || '';
@@ -2451,12 +2477,14 @@ async function loadAllData() {
   if (!psRow) savePlannerState();
 
   // 출석
-  const { data: attRows } = await sb.from('attendance').select('date_key,done');
+  const { data: attRows, error: attErr } = await sb.from('attendance').select('date_key,done');
+  if (attErr) showSyncError('출석 불러오기 실패: ' + attErr.message);
   attendance = {};
   (attRows || []).forEach(r => { if (r.done) attendance[r.date_key] = true; });
 
   // 시험 기간
-  const { data: exRow } = await sb.from('exam_periods').select('*').eq('user_id', uid).maybeSingle();
+  const { data: exRow, error: exErr } = await sb.from('exam_periods').select('*').eq('user_id', uid).maybeSingle();
+  if (exErr) showSyncError('시험 기간 불러오기 실패: ' + exErr.message);
   exams = exRow ? { mid: exRow.mid, final: exRow.final } : { mid: null, final: null };
   updateExamBtns();
   updateDDay();
